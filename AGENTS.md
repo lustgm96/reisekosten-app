@@ -29,6 +29,9 @@ Prioritäten:
 - Bestehenden Stack nicht ohne ausdrückliche Zustimmung austauschen.
 - Keine neuen Bibliotheken installieren, wenn die Aufgabe ohne sie lösbar ist.
 - Prisma CLI und @prisma/client müssen immer dieselbe Version haben.
+- Prisma-Schema nur ändern, wenn es zwingend erforderlich ist.
+- Niemals `prisma migrate reset` ausführen.
+- Vor einer Migration erklären, welche Tabellen und Felder verändert werden.
 - Nach Änderungen ausführen:
   - npm run typecheck
   - npx prisma validate
