@@ -17,6 +17,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
     include:{employee:true,expenses:true}
   });
   if(!report)notFound();
+  if(report.status!=="SUBMITTED")redirect("/review");
 
   const totals=calculateReport(report,report.expenses,await getNumericSettings());
 
@@ -25,21 +26,24 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
     const actor=await requireUser();
     if(actor.role==="EMPLOYEE")throw new Error("Nicht erlaubt");
     const decision=String(fd.get("decision"));
+    if(!["approve","return"].includes(decision))throw new Error("Ungültige Entscheidung");
     const text=String(fd.get("text")||"").trim();
+    if(decision==="return"&&!text)throw new Error("Bei einer Rückgabe ist ein Kommentar erforderlich.");
     if(text)commentSchema.parse({text});
 
     await db.$transaction(async tx=>{
+      const updated=await tx.expenseReport.updateMany({
+        where:{id,status:"SUBMITTED"},
+        data:decision==="approve"
+          ? {status:"APPROVED",approvedAt:new Date()}
+          : {status:"RETURNED",approvedAt:null,completedAt:null}
+      });
+      if(updated.count!==1)throw new Error("Die Abrechnung wurde bereits bearbeitet.");
       if(text){
         await tx.reviewComment.create({
           data:{reportId:id,authorId:actor.id,text}
         });
       }
-      await tx.expenseReport.update({
-        where:{id},
-        data:decision==="approve"
-          ? {status:"APPROVED",approvedAt:new Date()}
-          : {status:"RETURNED"}
-      });
     });
     redirect("/review");
   }
@@ -77,7 +81,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
 
       <div className="card"><h2>Entscheidung</h2>
         <form action={decide}>
-          <textarea name="text" placeholder="Kommentar, besonders bei Rückgabe"/>
+          <textarea name="text" placeholder="Kommentar (bei Rückgabe erforderlich)"/>
           <div className="actions">
             <button name="decision" value="approve">Freigeben</button>
             <button className="danger" name="decision" value="return">Zurückgeben</button>
