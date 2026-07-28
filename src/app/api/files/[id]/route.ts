@@ -18,7 +18,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
   const uploadDir=process.env.UPLOAD_DIR||"./storage/uploads";
   const buffer=await fs.readFile(path.join(uploadDir,item.storedFileName));
 
-  return new Response(buffer,{
+  return new Response(Uint8Array.from(buffer),{
     headers:{
       "content-type":item.mimeType||"application/octet-stream",
       "content-disposition":`inline; filename="${encodeURIComponent(item.originalFileName||"beleg")}"`

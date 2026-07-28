@@ -74,7 +74,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
   }
 
   const bytes=await pdf.save();
-  return new Response(bytes,{
+  return new Response(Uint8Array.from(bytes),{
     headers:{
       "content-type":"application/pdf",
       "content-disposition":`attachment; filename="reisekosten-${report.id}.pdf"`
