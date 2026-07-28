@@ -1,0 +1,1 @@
+import "./globals.css";export const metadata={title:"Reisekosten",description:"Digitale Reisekostenabrechnung"};export default function Layout({children}:{children:React.ReactNode}){return <html lang="de"><body>{children}</body></html>}

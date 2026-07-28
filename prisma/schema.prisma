@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  EMPLOYEE
+  APPROVER
+  ADMIN
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  RETURNED
+  APPROVED
+  COMPLETED
+}
+
+enum PaymentType {
+  PRIVATE
+  COMPANY_CARD
+  CASH
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(EMPLOYEE)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reports  ExpenseReport[]
+  comments ReviewComment[]
+}
+
+model ExpenseReport {
+  id                String       @id @default(cuid())
+  employeeId        String
+  employee          User         @relation(fields: [employeeId], references: [id])
+  title             String
+  purpose           String
+  destination       String
+  startAt           DateTime
+  endAt             DateTime
+  transportType     String
+  privateKilometers Float        @default(0)
+  breakfasts        Int          @default(0)
+  lunches           Int          @default(0)
+  dinners           Int          @default(0)
+  status            ReportStatus @default(DRAFT)
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  expenses ExpenseItem[]
+  comments ReviewComment[]
+
+  @@index([employeeId, status])
+  @@index([startAt, endAt])
+}
+
+model ExpenseItem {
+  id               String        @id @default(cuid())
+  reportId         String
+  report           ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  expenseDate      DateTime
+  category         String
+  description      String
+  amount           Decimal
+  vatAmount        Decimal       @default(0)
+  paymentType      PaymentType
+  originalFileName String?
+  storedFileName   String?
+  mimeType         String?
+  createdAt        DateTime      @default(now())
+
+  @@index([reportId, expenseDate])
+}
+
+model ReviewComment {
+  id        String        @id @default(cuid())
+  reportId  String
+  report    ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id])
+  text      String
+  createdAt DateTime      @default(now())
+
+  @@index([reportId, createdAt])
+}
+
+model AppSetting {
+  id    String @id
+  value String
+}
