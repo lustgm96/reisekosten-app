@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { expenseSchema, commentSchema } from "@/lib/validation";
-import { storeUpload } from "@/lib/storage";
+import { removeStoredFiles, storeUpload } from "@/lib/storage";
 import { getNumericSettings } from "@/lib/settings";
 import { calculateReport } from "@/lib/calculation";
+import { ConfirmDeleteButton } from "./confirm-delete-button";
 
 export const dynamic="force-dynamic";
 const eur=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
@@ -20,10 +21,11 @@ export default async function ReportPage({params}:{params:Promise<{id:string}>})
   const editable=report.employeeId===user.id&&["DRAFT","RETURNED"].includes(report.status);
 
   async function addExpense(fd:FormData){"use server";const u=await requireUser();const r=await db.expenseReport.findUniqueOrThrow({where:{id}});if(r.employeeId!==u.id||!["DRAFT","RETURNED"].includes(r.status))throw new Error("Nicht erlaubt");const p=expenseSchema.parse(Object.fromEntries(fd));const file=fd.get("file") as File;const upload=file?.size?await storeUpload(file):{};await db.expenseItem.create({data:{reportId:id,...p,...upload}});revalidatePath(`/reports/${id}`)}
-  async function submit(){"use server";const u=await requireUser();const r=await db.expenseReport.findUniqueOrThrow({where:{id}});if(r.employeeId!==u.id)throw new Error("Nicht erlaubt");await db.expenseReport.update({where:{id},data:{status:"SUBMITTED",submittedAt:new Date()}});redirect("/")}
+  async function submit(){"use server";const u=await requireUser();const r=await db.expenseReport.findUniqueOrThrow({where:{id}});if(r.employeeId!==u.id||!["DRAFT","RETURNED"].includes(r.status))throw new Error("Nicht erlaubt");await db.expenseReport.update({where:{id},data:{status:"SUBMITTED",submittedAt:new Date()}});redirect("/")}
+  async function remove(fd:FormData){"use server";const u=await requireUser();const reportId=String(fd.get("reportId"));const r=await db.expenseReport.findUniqueOrThrow({where:{id:reportId},include:{expenses:{select:{storedFileName:true}}}});if(r.employeeId!==u.id||!["DRAFT","RETURNED"].includes(r.status))throw new Error("Nicht erlaubt");await db.expenseReport.delete({where:{id:reportId}});await removeStoredFiles(r.expenses.map(x=>x.storedFileName));redirect("/")}
   async function addComment(fd:FormData){"use server";const u=await requireUser();const p=commentSchema.parse(Object.fromEntries(fd));await db.reviewComment.create({data:{reportId:id,authorId:u.id,text:p.text}});revalidatePath(`/reports/${id}`)}
 
-  return <><div className="actions" style={{justifyContent:"space-between"}}><div><h1>{report.title}</h1><div className="sub">{report.employee.name} · {report.destination}</div></div><div className="actions"><a className="button secondary" href={`/api/reports/${id}/pdf`}>PDF</a>{editable&&<form action={submit}><button>Zur Prüfung senden</button></form>}</div></div>
+  return <><div className="actions" style={{justifyContent:"space-between"}}><div><h1>{report.title}</h1><div className="sub">{report.employee.name} · {report.destination}</div></div><div className="actions"><a className="button secondary" href={`/api/reports/${id}/pdf`}>PDF</a>{editable&&<><Link className="button secondary" href={`/reports/${id}/edit`}>Bearbeiten</Link><form action={remove}><input name="reportId" type="hidden" value={id}/><ConfirmDeleteButton/></form><form action={submit}><button>Zur Prüfung senden</button></form></>}</div></div>
   <section className="grid two">
     <div className="card"><h2>Reise</h2><table><tbody><tr><th>Zeitraum</th><td>{report.startAt.toLocaleString("de-DE")} – {report.endAt.toLocaleString("de-DE")}</td></tr><tr><th>Zweck</th><td>{report.purpose}</td></tr><tr><th>Verkehrsmittel</th><td>{report.transportType}</td></tr><tr><th>Status</th><td><span className="badge">{report.status}</span></td></tr></tbody></table>
     <h2 style={{marginTop:22}}>Belege und Ausgaben</h2><table><thead><tr><th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th>Zahlung</th><th>Betrag</th></tr></thead><tbody>{report.expenses.map(x=><tr key={x.id}><td>{x.expenseDate.toLocaleDateString("de-DE")}</td><td>{x.category}</td><td>{x.description}{x.storedFileName&&<> · <a href={`/api/files/${x.id}`}>Beleg</a></>}</td><td>{x.paymentType}</td><td>{eur.format(Number(x.amount))}</td></tr>)}</tbody></table>

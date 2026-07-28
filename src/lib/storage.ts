@@ -17,3 +17,12 @@ export async function storeUpload(file: File) {
 
   return { originalFileName: file.name, storedFileName, mimeType: file.type };
 }
+
+export async function removeStoredFiles(storedFileNames: Array<string | null>) {
+  const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
+  const fileNames = storedFileNames.filter((name): name is string => Boolean(name));
+
+  await Promise.allSettled(
+    fileNames.map(fileName => fs.unlink(path.join(uploadDir, path.basename(fileName))))
+  );
+}
