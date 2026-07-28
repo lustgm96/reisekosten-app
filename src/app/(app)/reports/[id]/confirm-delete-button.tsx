@@ -1,17 +1,25 @@
 "use client";
 
-export function ConfirmDeleteButton() {
+type ConfirmDeleteButtonProps = {
+  label?: string;
+  message?: string;
+};
+
+export function ConfirmDeleteButton({
+  label = "Löschen",
+  message = "Abrechnung einschließlich aller Ausgaben und Kommentare löschen?"
+}: ConfirmDeleteButtonProps) {
   return (
     <button
       className="danger"
       onClick={event => {
-        if (!window.confirm("Abrechnung einschließlich aller Ausgaben und Kommentare löschen?")) {
+        if (!window.confirm(message)) {
           event.preventDefault();
         }
       }}
       type="submit"
     >
-      Löschen
+      {label}
     </button>
   );
 }
