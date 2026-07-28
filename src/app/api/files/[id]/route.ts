@@ -16,12 +16,19 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
   if(user.role==="EMPLOYEE"&&item.report.employeeId!==user.id)notFound();
 
   const uploadDir=process.env.UPLOAD_DIR||"./storage/uploads";
-  const buffer=await fs.readFile(path.join(uploadDir,item.storedFileName));
+  let buffer: Buffer;
+  try {
+    buffer=await fs.readFile(path.join(uploadDir,path.basename(item.storedFileName)));
+  } catch (error) {
+    if((error as NodeJS.ErrnoException).code==="ENOENT")notFound();
+    throw error;
+  }
 
   return new Response(Uint8Array.from(buffer),{
     headers:{
       "content-type":item.mimeType||"application/octet-stream",
-      "content-disposition":`inline; filename="${encodeURIComponent(item.originalFileName||"beleg")}"`
+      "content-disposition":`inline; filename*=UTF-8''${encodeURIComponent(item.originalFileName||"beleg")}`,
+      "cache-control":"private, no-store"
     }
   });
 }
