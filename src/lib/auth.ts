@@ -38,7 +38,9 @@ export async function currentUser() {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key);
-    return payload.sub ? db.user.findUnique({ where: { id: payload.sub } }) : null;
+    if (!payload.sub) return null;
+    const user = await db.user.findUnique({ where: { id: payload.sub } });
+    return user?.active ? user : null;
   } catch {
     return null;
   }

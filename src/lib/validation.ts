@@ -28,3 +28,13 @@ export const expenseSchema = z.object({
 export const commentSchema = z.object({
   text: z.string().trim().min(2).max(1000)
 });
+
+export const userSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().toLowerCase().email().max(200),
+  role: z.enum(["EMPLOYEE", "APPROVER", "ADMIN"])
+});
+
+export const passwordSchema = z.object({
+  password: z.string().min(8).max(100)
+});

@@ -18,7 +18,12 @@ export function Navigation({ role }: NavigationProps) {
     { href: "/reports/new", label: "Neue Abrechnung" },
     { href: "/archive", label: "Archiv" },
     ...(role !== "EMPLOYEE" ? [{ href: "/review", label: "Prüfung" }] : []),
-    ...(role === "ADMIN" ? [{ href: "/settings", label: "Einstellungen" }] : [])
+    ...(role === "ADMIN"
+      ? [
+          { href: "/users", label: "Benutzer" },
+          { href: "/settings", label: "Einstellungen" }
+        ]
+      : [])
   ];
 
   return (

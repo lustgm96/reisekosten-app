@@ -1,0 +1,86 @@
+.error-callout {
+  border-left-color: var(--bad);
+  color: var(--bad);
+  margin-bottom: 16px;
+}
+
+.success-callout {
+  background: #ecfdf3;
+  border-left-color: var(--ok);
+  color: var(--ok);
+  margin-bottom: 16px;
+}
+
+.user-create {
+  margin-bottom: 18px;
+  max-width: 1050px;
+}
+
+.user-password-field {
+  max-width: 340px;
+}
+
+.user-list {
+  display: grid;
+  gap: 14px;
+  max-width: 1050px;
+}
+
+.user-card {
+  display: grid;
+  gap: 16px;
+}
+
+.user-card-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.user-card-heading h2 {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.user-card-heading .badge {
+  margin-right: 6px;
+}
+
+.user-inactive {
+  opacity: 0.72;
+}
+
+.checkbox {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.password-reset {
+  align-items: end;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 340px) auto;
+  padding-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .user-card-heading {
+    display: grid;
+  }
+
+  .password-reset {
+    grid-template-columns: 1fr;
+  }
+
+  .password-reset button {
+    width: 100%;
+  }
+}
