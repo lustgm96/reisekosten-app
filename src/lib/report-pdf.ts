@@ -21,6 +21,7 @@ export type ReportPdfData = {
   approvedAt: Date | null;
   breakfasts: number;
   comments: PdfComment[];
+  completedAt: Date | null;
   destination: string;
   dinners: number;
   employee: { name: string };
@@ -300,6 +301,18 @@ export async function createReportPdf(
       color: TEXT
     });
     y -= 32;
+  }
+
+  if (report.completedAt) {
+    ensureSpace(28);
+    page.drawText(`Ausgezahlt und abgeschlossen am ${dateTime.format(report.completedAt)}`, {
+      x: MARGIN + 7,
+      y: y - 8,
+      size: 9,
+      font: bold,
+      color: TEXT
+    });
+    y -= 28;
   }
 
   if (report.comments.length) {
