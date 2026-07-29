@@ -89,3 +89,21 @@ test("zählt Kalendertage unabhängig von Sommerzeitlängen", () => {
   );
   assert.equal(result.days, 3);
 });
+
+test("verwendet ausländische Pauschalen und prozentuale Mahlzeitenkürzungen", () => {
+  const result = calculateReport(
+    report({
+      startAt: new Date("2026-07-01T08:00:00"),
+      endAt: new Date("2026-07-03T18:00:00"),
+      breakfasts: 1,
+      lunches: 1
+    }),
+    [],
+    settings,
+    { fullDay: 50, partialDay: 33 }
+  );
+
+  assert.equal(result.mealBase, 116);
+  assert.equal(result.mealDeductions, 30);
+  assert.equal(result.mealAllowance, 86);
+});

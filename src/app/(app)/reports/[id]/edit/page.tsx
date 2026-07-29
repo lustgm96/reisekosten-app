@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { reportSchema } from "@/lib/validation";
 import { notFound, redirect } from "next/navigation";
 import { withBasePath } from "@/lib/paths";
+import { getPerDiemRates } from "@/lib/settings";
+import { resolvePerDiemRate } from "@/lib/per-diem";
 
 const editableStatuses = ["DRAFT", "RETURNED"] as const;
 
@@ -44,9 +46,19 @@ export default async function EditReport({
     }
 
     const values = reportSchema.parse(Object.fromEntries(formData));
+    const rate = resolvePerDiemRate(
+      values.countryCode,
+      values.destination,
+      await getPerDiemRates()
+    );
     await db.expenseReport.update({
       where: { id },
-      data: values
+      data: {
+        ...values,
+        perDiemCode: rate.code,
+        perDiemFullDay: rate.fullDay,
+        perDiemPartialDay: rate.partialDay
+      }
     });
     redirect(`/reports/${id}`);
   }
@@ -65,9 +77,19 @@ export default async function EditReport({
             <label>Reisezweck</label>
             <textarea name="purpose" defaultValue={report.purpose} required />
           </div>
-          <div>
-            <label>Zielort</label>
-            <input name="destination" defaultValue={report.destination} required />
+          <div className="row">
+            <div>
+              <label>Reiseland</label>
+              <select name="countryCode" defaultValue={report.countryCode}>
+                <option value="DE">Deutschland</option>
+                <option value="AT">Österreich</option>
+                <option value="CH">Schweiz</option>
+              </select>
+            </div>
+            <div>
+              <label>Zielort</label>
+              <input name="destination" defaultValue={report.destination} required />
+            </div>
           </div>
           <div className="row">
             <div>

@@ -2,8 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { commentSchema } from "@/lib/validation";
-import { getNumericSettings } from "@/lib/settings";
+import { getNumericSettings, getPerDiemRates } from "@/lib/settings";
 import { calculateReport } from "@/lib/calculation";
+import { countryLabels, storedPerDiemRate } from "@/lib/per-diem";
 import { withBasePath } from "@/lib/paths";
 
 const eur=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
@@ -20,7 +21,9 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
   if(!report)notFound();
   if(report.status!=="SUBMITTED")redirect("/review");
 
-  const totals=calculateReport(report,report.expenses,await getNumericSettings());
+  const rates=await getPerDiemRates();
+  const rate=storedPerDiemRate(report,rates);
+  const totals=calculateReport(report,report.expenses,await getNumericSettings(),rate);
 
   async function decide(fd:FormData){
     "use server";
@@ -54,7 +57,8 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
     <div className="card">
       <h2>Reise</h2>
       <table><tbody>
-        <tr><th>Ziel</th><td>{report.destination}</td></tr>
+        <tr><th>Ziel</th><td>{report.destination}, {countryLabels[report.countryCode as keyof typeof countryLabels] ?? report.countryCode}</td></tr>
+        <tr><th>Pauschalsatz</th><td>{rate.label}</td></tr>
         <tr><th>Zeitraum</th><td>{report.startAt.toLocaleString("de-DE")} – {report.endAt.toLocaleString("de-DE")}</td></tr>
         <tr><th>Zweck</th><td>{report.purpose}</td></tr>
       </tbody></table>

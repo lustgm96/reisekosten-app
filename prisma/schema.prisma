@@ -48,6 +48,10 @@ model ExpenseReport {
   title             String
   purpose           String
   destination       String
+  countryCode       String       @default("DE")
+  perDiemCode       String       @default("DE")
+  perDiemFullDay    Decimal      @default(28)
+  perDiemPartialDay Decimal      @default(14)
   startAt           DateTime
   endAt             DateTime
   transportType     String

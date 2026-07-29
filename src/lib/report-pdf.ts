@@ -2,6 +2,7 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import type { Prisma, PaymentType, ReportStatus } from "@prisma/client";
 import type { NumericSettings } from "@/lib/calculation";
 import { calculateReport } from "@/lib/calculation";
+import type { PerDiemRate } from "@/lib/per-diem";
 
 type PdfExpense = {
   amount: number | Prisma.Decimal;
@@ -117,7 +118,8 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number) {
 export async function createReportPdf(
   report: ReportPdfData,
   settings: NumericSettings,
-  company: string
+  company: string,
+  perDiemRate?: PerDiemRate
 ) {
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
@@ -251,7 +253,7 @@ export async function createReportPdf(
   }
   y -= 10;
 
-  const totals = calculateReport(report, report.expenses, settings);
+  const totals = calculateReport(report, report.expenses, settings, perDiemRate);
   sectionTitle("Berechnung");
   const summaryRows: Array<[string, number, boolean?]> = [
     [`Verpflegung (${totals.days} Reisetag${totals.days === 1 ? "" : "e"})`, totals.mealBase],
