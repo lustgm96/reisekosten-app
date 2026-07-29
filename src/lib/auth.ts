@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "./db";
+import { basePath } from "./paths";
 
 const cookieName = "reisekosten_session";
 const key = new TextEncoder().encode(
@@ -23,14 +24,20 @@ export async function login(email: string, password: string) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    path: "/",
+    path: basePath || "/",
     maxAge: 43200
   });
   return true;
 }
 
 export async function logout() {
-  (await cookies()).delete(cookieName);
+  (await cookies()).set(cookieName, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: basePath || "/",
+    maxAge: 0
+  });
 }
 
 export async function currentUser() {

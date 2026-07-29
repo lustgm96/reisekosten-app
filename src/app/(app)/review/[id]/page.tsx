@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { commentSchema } from "@/lib/validation";
 import { getNumericSettings } from "@/lib/settings";
 import { calculateReport } from "@/lib/calculation";
+import { withBasePath } from "@/lib/paths";
 
 const eur=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
 
@@ -62,7 +63,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
       <table><thead><tr><th>Datum</th><th>Beschreibung</th><th>Zahlung</th><th>Betrag</th></tr></thead><tbody>
       {report.expenses.map(x=><tr key={x.id}>
         <td>{x.expenseDate.toLocaleDateString("de-DE")}</td>
-        <td>{x.description}{x.storedFileName&&<> · <a href={`/api/files/${x.id}`}>Beleg</a></>}</td>
+        <td>{x.description}{x.storedFileName&&<> · <a href={withBasePath(`/api/files/${x.id}`)}>Beleg</a></>}</td>
         <td>{x.paymentType}</td>
         <td>{eur.format(Number(x.amount))}</td>
       </tr>)}

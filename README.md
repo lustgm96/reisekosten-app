@@ -10,7 +10,7 @@ Kompakte digitale Reisekostenabrechnung für ein kleines Team.
 4. Im Browser öffnen:
 
 ```text
-http://localhost:3000
+http://localhost:3000/Reisekosten/
 ```
 
 Die CMD-Dateien verwenden intern `pushd` und funktionieren deshalb auch dann,
@@ -42,6 +42,29 @@ npm run dev
 ```
 
 Bei einem UNC-Pfad bitte stattdessen die mitgelieferten CMD-Dateien verwenden.
+
+## Interne App-Plattform
+
+Für die Bereitstellung unter `https://apps.purelink.de/Reisekosten/`:
+
+```powershell
+npm run dev:platform
+```
+
+Die App läuft dabei auf Port `3010`. Caddy muss den Unterpfad unverändert an
+Next.js weiterreichen; `handle_path` darf nicht verwendet werden, weil es den
+von Next.js erwarteten Präfix entfernen würde.
+
+Beispiel:
+
+```caddyfile
+handle /Reisekosten/* {
+  reverse_proxy 127.0.0.1:3010
+}
+```
+
+Der Unterpfad wird über `NEXT_PUBLIC_BASE_PATH` konfiguriert und ist
+standardmäßig `/Reisekosten`.
 
 ## Enthalten
 

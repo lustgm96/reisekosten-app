@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { reportSchema } from "@/lib/validation";
 import { notFound, redirect } from "next/navigation";
+import { withBasePath } from "@/lib/paths";
 
 const editableStatuses = ["DRAFT", "RETURNED"] as const;
 
@@ -131,7 +132,7 @@ export default async function EditReport({
           </div>
           <div className="actions">
             <button>Änderungen speichern</button>
-            <a className="button secondary" href={`/reports/${id}`}>
+            <a className="button secondary" href={withBasePath(`/reports/${id}`)}>
               Abbrechen
             </a>
           </div>
