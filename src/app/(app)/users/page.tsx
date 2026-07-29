@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { passwordSchema, userSchema } from "@/lib/validation";
+import { getAdminChangeError } from "@/lib/user-policy";
 import "./users.css";
 
 export const dynamic = "force-dynamic";
@@ -69,15 +70,17 @@ export default async function UsersPage({
     if (!target) redirect(feedbackUrl("error", "Der Benutzer wurde nicht gefunden."));
     const active = formData.get("active") === "on";
 
-    if (target.id === currentAdmin.id && (!active || parsed.data.role !== "ADMIN")) {
-      redirect(feedbackUrl("error", "Der eigene Adminzugang kann nicht deaktiviert oder herabgestuft werden."));
-    }
-    if (target.role === "ADMIN" && (parsed.data.role !== "ADMIN" || !active)) {
-      const activeAdmins = await db.user.count({ where: { role: "ADMIN", active: true } });
-      if (activeAdmins <= 1) {
-        redirect(feedbackUrl("error", "Mindestens ein aktiver Admin muss erhalten bleiben."));
-      }
-    }
+    const activeAdminCount = await db.user.count({ where: { role: "ADMIN", active: true } });
+    const policyError = getAdminChangeError({
+      activeAdminCount,
+      actorId: currentAdmin.id,
+      nextActive: active,
+      nextRole: parsed.data.role,
+      targetActive: target.active,
+      targetId: target.id,
+      targetRole: target.role
+    });
+    if (policyError) redirect(feedbackUrl("error", policyError));
 
     try {
       await db.user.update({ where: { id }, data: { ...parsed.data, active } });
