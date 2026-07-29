@@ -1,0 +1,32 @@
+.expense-entry-form {
+  gap: 14px;
+}
+
+.receipt-upload-first {
+  background: #f8fafc;
+  border: 1px dashed #98a2b3;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.receipt-upload-first > label {
+  font-size: 15px;
+}
+
+.recognition-status {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 9px;
+}
+
+.recognition-status.analyzing {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.recognition-warnings {
+  color: var(--warn);
+  font-size: 13px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
