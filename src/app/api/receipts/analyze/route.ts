@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { currentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { recognizeReceipt } from "@/lib/receipt-recognition";
+import { ReceiptFileError, validateReceiptFile } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-
 export async function POST(request: Request) {
-  const user = await requireUser();
+  const user = await currentUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "Die Anmeldung ist abgelaufen. Bitte erneut anmelden." },
+      { status: 401 }
+    );
+  }
   const formData = await request.formData();
   const reportId = String(formData.get("reportId") ?? "");
   const file = formData.get("file");
@@ -22,17 +27,13 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json({ error: "Nicht erlaubt." }, { status: 403 });
   }
-  if (!(file instanceof File) || !file.size) {
-    return NextResponse.json({ error: "Bitte einen Beleg auswählen." }, { status: 400 });
-  }
-  if (!imageTypes.has(file.type)) {
-    return NextResponse.json(
-      { error: "Die automatische Erkennung unterstützt zunächst JPG, PNG und WebP. PDF kann weiterhin manuell erfasst werden." },
-      { status: 415 }
-    );
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    return NextResponse.json({ error: "Die Datei darf maximal 10 MB groß sein." }, { status: 413 });
+  try {
+    validateReceiptFile(file, true);
+  } catch (error) {
+    if (error instanceof ReceiptFileError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
   }
 
   try {

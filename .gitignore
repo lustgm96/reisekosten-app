@@ -2,6 +2,7 @@ node_modules
 .next
 *.tsbuildinfo
 dev-server*.log
+.dev-server*.log
 .env
 prisma/dev.db
 prisma/dev.db-journal

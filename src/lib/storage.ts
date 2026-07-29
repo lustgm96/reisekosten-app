@@ -2,10 +2,48 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+
+const receiptMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf"
+]);
+const receiptImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+export class ReceiptFileError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ReceiptFileError";
+    this.status = status;
+  }
+}
+
+export function validateReceiptFile(file: unknown, imagesOnly = false): asserts file is File {
+  if (!(file instanceof File) || !file.size) {
+    throw new ReceiptFileError("Bitte einen Beleg auswählen.", 400);
+  }
+
+  const allowedTypes = imagesOnly ? receiptImageMimeTypes : receiptMimeTypes;
+  if (!allowedTypes.has(file.type)) {
+    throw new ReceiptFileError(
+      imagesOnly
+        ? "Die automatische Erkennung unterstützt zunächst JPG, PNG und WebP. PDF kann weiterhin manuell erfasst werden."
+        : "Erlaubt sind JPG, PNG, WebP und PDF.",
+      415
+    );
+  }
+
+  if (file.size > MAX_RECEIPT_BYTES) {
+    throw new ReceiptFileError("Die Datei darf maximal 10 MB groß sein.", 413);
+  }
+}
+
 export async function storeUpload(file: File) {
-  const allowed = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
-  if (!allowed.has(file.type)) throw new Error("Erlaubt sind JPG, PNG, WEBP und PDF.");
-  if (file.size > 10 * 1024 * 1024) throw new Error("Die Datei darf maximal 10 MB groß sein.");
+  validateReceiptFile(file);
 
   const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
   await fs.mkdir(uploadDir, { recursive: true });

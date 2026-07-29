@@ -15,7 +15,9 @@ let workerPromise: Promise<Worker> | null = null;
 let recognitionQueue = Promise.resolve();
 
 function getWorker() {
-  workerPromise ??= createWorker(german.code, OEM.LSTM_ONLY, {
+  if (workerPromise) return workerPromise;
+
+  const pendingWorker = createWorker(german.code, OEM.LSTM_ONLY, {
     cacheMethod: "none",
     gzip: german.gzip,
     langPath: german.langPath
@@ -26,7 +28,20 @@ function getWorker() {
     });
     return worker;
   });
-  return workerPromise;
+  workerPromise = pendingWorker;
+  void pendingWorker.catch(() => {
+    if (workerPromise === pendingWorker) workerPromise = null;
+  });
+  return pendingWorker;
+}
+
+async function discardWorker(worker: Worker) {
+  workerPromise = null;
+  try {
+    await worker.terminate();
+  } catch {
+    // Der ursprüngliche OCR-Fehler ist für den Aufrufer relevanter.
+  }
 }
 
 function parseMoney(value: string) {
@@ -143,8 +158,13 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
 export function recognizeReceipt(image: Buffer) {
   const job = recognitionQueue.then(async () => {
     const worker = await getWorker();
-    const result = await worker.recognize(image);
-    return extractReceiptSuggestion(result.data.text, result.data.confidence);
+    try {
+      const result = await worker.recognize(image);
+      return extractReceiptSuggestion(result.data.text, result.data.confidence);
+    } catch (error) {
+      await discardWorker(worker);
+      throw error;
+    }
   });
   recognitionQueue = job.then(() => undefined, () => undefined);
   return job;
