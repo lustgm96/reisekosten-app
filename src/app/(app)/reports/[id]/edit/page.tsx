@@ -51,13 +51,22 @@ export default async function EditReport({
       values.destination,
       await getPerDiemRates()
     );
+    if (
+      values.accommodationMode === "PER_DIEM" &&
+      (await db.expenseItem.count({ where: { reportId: id, category: "Hotel" } })) > 0
+    ) {
+      throw new Error(
+        "Für die Übernachtungspauschale müssen vorhandene Hotelbelege zuerst entfernt werden."
+      );
+    }
     await db.expenseReport.update({
       where: { id },
       data: {
         ...values,
         perDiemCode: rate.code,
         perDiemFullDay: rate.fullDay,
-        perDiemPartialDay: rate.partialDay
+        perDiemPartialDay: rate.partialDay,
+        perDiemOvernight: rate.overnight
       }
     });
     redirect(`/reports/${id}`);
@@ -72,6 +81,14 @@ export default async function EditReport({
           <div>
             <label>Titel</label>
             <input name="title" defaultValue={report.title} required />
+          </div>
+          <div>
+            <label>Übernachtung abrechnen</label>
+            <select name="accommodationMode" defaultValue={report.accommodationMode}>
+              <option value="ACTUAL">Tatsächliche Hotelkosten laut Beleg</option>
+              <option value="PER_DIEM">Übernachtungspauschale ohne Hotelbeleg</option>
+              <option value="PROVIDED">Vom Arbeitgeber gestellt / keine Erstattung</option>
+            </select>
           </div>
           <div>
             <label>Reisezweck</label>

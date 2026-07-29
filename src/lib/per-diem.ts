@@ -3,15 +3,16 @@ export type PerDiemRate = {
   countryCode: "DE" | "AT" | "CH";
   label: string;
   fullDay: number;
+  overnight: number;
   partialDay: number;
 };
 
 export const DEFAULT_PER_DIEM_RATES: PerDiemRate[] = [
-  { code: "DE", countryCode: "DE", label: "Deutschland", fullDay: 28, partialDay: 14 },
-  { code: "AT", countryCode: "AT", label: "Österreich", fullDay: 50, partialDay: 33 },
-  { code: "CH", countryCode: "CH", label: "Schweiz (übrige Orte)", fullDay: 70, partialDay: 47 },
-  { code: "CH_BERN", countryCode: "CH", label: "Schweiz – Bern", fullDay: 82, partialDay: 55 },
-  { code: "CH_GENEVA", countryCode: "CH", label: "Schweiz – Genf", fullDay: 70, partialDay: 47 }
+  { code: "DE", countryCode: "DE", label: "Deutschland", fullDay: 28, partialDay: 14, overnight: 20 },
+  { code: "AT", countryCode: "AT", label: "Österreich", fullDay: 50, partialDay: 33, overnight: 117 },
+  { code: "CH", countryCode: "CH", label: "Schweiz (übrige Orte)", fullDay: 70, partialDay: 47, overnight: 195 },
+  { code: "CH_BERN", countryCode: "CH", label: "Schweiz – Bern", fullDay: 82, partialDay: 55, overnight: 195 },
+  { code: "CH_GENEVA", countryCode: "CH", label: "Schweiz – Genf", fullDay: 70, partialDay: 47, overnight: 197 }
 ];
 
 export const countryLabels = {
@@ -45,6 +46,7 @@ export function storedPerDiemRate(
   report: {
     perDiemCode: string;
     perDiemFullDay: number | { toString(): string };
+    perDiemOvernight: number | { toString(): string };
     perDiemPartialDay: number | { toString(): string };
   },
   rates: PerDiemRate[]
@@ -55,10 +57,14 @@ export function storedPerDiemRate(
     ...template,
     code: report.perDiemCode,
     fullDay: Number(report.perDiemFullDay),
+    overnight: Number(report.perDiemOvernight),
     partialDay: Number(report.perDiemPartialDay)
   };
 }
 
-export function perDiemSettingId(code: string, field: "fullDay" | "partialDay") {
+export function perDiemSettingId(
+  code: string,
+  field: "fullDay" | "partialDay" | "overnight"
+) {
   return `perDiem.${code}.${field}`;
 }

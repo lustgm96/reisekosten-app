@@ -18,7 +18,7 @@ export default async function AllowancesPage() {
     if (actor.role !== "ADMIN") throw new Error("Nicht erlaubt");
 
     const updates = rates.flatMap(rate =>
-      (["fullDay", "partialDay"] as const).map(field => {
+      (["fullDay", "partialDay", "overnight"] as const).map(field => {
         const id = perDiemSettingId(rate.code, field);
         const value = Number(formData.get(id));
         if (!Number.isFinite(value) || value < 0 || value > 500) {
@@ -50,6 +50,7 @@ export default async function AllowancesPage() {
                 <th>Reiseland / Region</th>
                 <th>24 Stunden</th>
                 <th>An-/Abreise oder mehr als 8 Stunden</th>
+                <th>Übernachtung</th>
               </tr>
             </thead>
             <tbody>
@@ -84,6 +85,20 @@ export default async function AllowancesPage() {
                       eur.format(rate.partialDay)
                     )}
                   </td>
+                  <td>
+                    {user.role === "ADMIN" ? (
+                      <input
+                        aria-label={`${rate.label}, Übernachtung`}
+                        defaultValue={rate.overnight}
+                        min="0"
+                        name={perDiemSettingId(rate.code, "overnight")}
+                        step=".01"
+                        type="number"
+                      />
+                    ) : (
+                      eur.format(rate.overnight)
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -93,7 +108,9 @@ export default async function AllowancesPage() {
         <p className="small">
           Für die Schweiz werden Bern und Genf automatisch aus dem Zielort erkannt. Ansonsten
           gilt der Satz „Schweiz (übrige Orte)“. Kürzungen: Frühstück 20 %, Mittag- und
-          Abendessen jeweils 40 % des jeweiligen 24-Stunden-Satzes.
+          Abendessen jeweils 40 % des jeweiligen 24-Stunden-Satzes. Die
+          Übernachtungspauschalen gelten nur für eine Arbeitgebererstattung ohne
+          Einzelnachweis.
         </p>
       </div>
     </>

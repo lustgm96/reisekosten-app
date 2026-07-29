@@ -34,7 +34,8 @@ export async function getCompanyName() {
 export async function getPerDiemRates(): Promise<PerDiemRate[]> {
   const ids = DEFAULT_PER_DIEM_RATES.flatMap(rate => [
     perDiemSettingId(rate.code, "fullDay"),
-    perDiemSettingId(rate.code, "partialDay")
+    perDiemSettingId(rate.code, "partialDay"),
+    perDiemSettingId(rate.code, "overnight")
   ]);
   const stored = Object.fromEntries(
     (await db.appSetting.findMany({ where: { id: { in: ids } } })).map(row => [row.id, row.value])
@@ -45,14 +46,19 @@ export async function getPerDiemRates(): Promise<PerDiemRate[]> {
     const partialDay = Number(
       stored[perDiemSettingId(rate.code, "partialDay")] ?? rate.partialDay
     );
+    const overnight = Number(
+      stored[perDiemSettingId(rate.code, "overnight")] ?? rate.overnight
+    );
     if (
       !Number.isFinite(fullDay) ||
       !Number.isFinite(partialDay) ||
+      !Number.isFinite(overnight) ||
       fullDay < 0 ||
-      partialDay < 0
+      partialDay < 0 ||
+      overnight < 0
     ) {
       throw new Error(`Ungültiger Pauschalsatz: ${rate.label}`);
     }
-    return { ...rate, fullDay, partialDay };
+    return { ...rate, fullDay, partialDay, overnight };
   });
 }

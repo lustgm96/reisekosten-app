@@ -29,11 +29,17 @@ test("verwendet für andere Schweizer Orte den allgemeinen Satz", () => {
 
 test("behält den in einer Abrechnung gespeicherten Satz bei", () => {
   const rate = storedPerDiemRate(
-    { perDiemCode: "AT", perDiemFullDay: 49, perDiemPartialDay: 32 },
+    {
+      perDiemCode: "AT",
+      perDiemFullDay: 49,
+      perDiemPartialDay: 32,
+      perDiemOvernight: 116
+    },
     DEFAULT_PER_DIEM_RATES
   );
 
   assert.equal(rate.label, "Österreich");
   assert.equal(rate.fullDay, 49);
   assert.equal(rate.partialDay, 32);
+  assert.equal(rate.overnight, 116);
 });

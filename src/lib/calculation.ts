@@ -18,7 +18,10 @@ type CalculationReport = Pick<
   | "lunches"
   | "privateKilometers"
   | "startAt"
->;
+> & {
+  accommodationMode: "ACTUAL" | "PER_DIEM" | "PROVIDED";
+  perDiemOvernight: ExpenseItem["amount"] | number;
+};
 
 type CalculationExpense = {
   amount: ExpenseItem["amount"] | number;
@@ -61,6 +64,11 @@ export function calculateReport(
     report.dinners * (perDiemRate ? fullDayRate * 0.4 : settings.dinnerDeduction);
   const mealDeductions = Math.min(mealBase, requestedMealDeductions);
   const mealAllowance = roundMoney(mealBase - mealDeductions);
+  const nights = Math.max(0, days - 1);
+  const lodgingAllowance =
+    report.accommodationMode === "PER_DIEM"
+      ? roundMoney(nights * Number(report.perDiemOvernight))
+      : 0;
   const mileage = roundMoney(report.privateKilometers * settings.mileageRate);
 
   const sum = (type: PaymentType) =>
@@ -76,16 +84,25 @@ export function calculateReport(
 
   return {
     days,
+    nights,
     mealBase: roundMoney(mealBase),
     mealDeductions: roundMoney(mealDeductions),
     mealAllowance,
+    lodgingAllowance,
     mileage,
     privateExpenses,
     companyCardExpenses,
     cashExpenses,
-    reimbursement: roundMoney(mealAllowance + mileage + privateExpenses + cashExpenses),
+    reimbursement: roundMoney(
+      mealAllowance + lodgingAllowance + mileage + privateExpenses + cashExpenses
+    ),
     totalCosts: roundMoney(
-      mealAllowance + mileage + privateExpenses + companyCardExpenses + cashExpenses
+      mealAllowance +
+        lodgingAllowance +
+        mileage +
+        privateExpenses +
+        companyCardExpenses +
+        cashExpenses
     )
   };
 }

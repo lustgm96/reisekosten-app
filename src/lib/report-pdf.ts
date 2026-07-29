@@ -19,6 +19,7 @@ type PdfComment = {
 };
 
 export type ReportPdfData = {
+  accommodationMode: "ACTUAL" | "PER_DIEM" | "PROVIDED";
   approvedAt: Date | null;
   breakfasts: number;
   comments: PdfComment[];
@@ -31,6 +32,7 @@ export type ReportPdfData = {
   id: string;
   lunches: number;
   privateKilometers: number;
+  perDiemOvernight: number | Prisma.Decimal;
   purpose: string;
   startAt: Date;
   status: ReportStatus;
@@ -259,6 +261,7 @@ export async function createReportPdf(
     [`Verpflegung (${totals.days} Reisetag${totals.days === 1 ? "" : "e"})`, totals.mealBase],
     ["Abzug gestellter Mahlzeiten", -totals.mealDeductions],
     ["Verpflegungspauschale", totals.mealAllowance],
+    [`Übernachtungspauschale (${totals.nights} Nächte)`, totals.lodgingAllowance],
     [`Kilometergeld (${report.privateKilometers.toLocaleString("de-DE")} km)`, totals.mileage],
     ["Privat ausgelegte Ausgaben", totals.privateExpenses],
     ["Bar ausgelegte Ausgaben", totals.cashExpenses],

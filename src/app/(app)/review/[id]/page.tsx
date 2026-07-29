@@ -59,6 +59,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
       <table><tbody>
         <tr><th>Ziel</th><td>{report.destination}, {countryLabels[report.countryCode as keyof typeof countryLabels] ?? report.countryCode}</td></tr>
         <tr><th>Pauschalsatz</th><td>{rate.label}</td></tr>
+        <tr><th>Übernachtung</th><td>{report.accommodationMode==="PER_DIEM"?`Pauschale (${eur.format(Number(report.perDiemOvernight))} je Nacht)`:report.accommodationMode==="PROVIDED"?"Gestellt / keine Erstattung":"Tatsächliche Kosten laut Beleg"}</td></tr>
         <tr><th>Zeitraum</th><td>{report.startAt.toLocaleString("de-DE")} – {report.endAt.toLocaleString("de-DE")}</td></tr>
         <tr><th>Zweck</th><td>{report.purpose}</td></tr>
       </tbody></table>
@@ -77,6 +78,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
     <div className="grid">
       <div className="card"><h2>Zusammenfassung</h2><div className="summary">
         <span>Verpflegung</span><strong>{eur.format(totals.mealAllowance)}</strong>
+        <span>Übernachtungspauschale</span><strong>{eur.format(totals.lodgingAllowance)}</strong>
         <span>Kilometergeld</span><strong>{eur.format(totals.mileage)}</strong>
         <span>Privat ausgelegt</span><strong>{eur.format(totals.privateExpenses)}</strong>
         <span>Firmenkarte</span><strong>{eur.format(totals.companyCardExpenses)}</strong>

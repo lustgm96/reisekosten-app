@@ -49,6 +49,9 @@ export default async function EditExpense({
     }
 
     const values = expenseSchema.parse(Object.fromEntries(formData));
+    if (current.report.accommodationMode === "PER_DIEM" && values.category === "Hotel") {
+      throw new Error("Bei Übernachtungspauschale kann kein Hotelbeleg erfasst werden.");
+    }
     const file = formData.get("file") as File;
     const upload = file?.size ? await storeUpload(file) : {};
 

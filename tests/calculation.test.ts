@@ -12,13 +12,32 @@ const settings: NumericSettings = {
 };
 
 const report = (overrides: Record<string, unknown> = {}) => ({
+  accommodationMode: "ACTUAL" as const,
   breakfasts: 0,
   dinners: 0,
   endAt: new Date(2026, 6, 6, 18, 0),
   lunches: 0,
   privateKilometers: 0,
+  perDiemOvernight: 20,
   startAt: new Date(2026, 6, 6, 9, 0),
   ...overrides
+});
+
+test("berechnet die Übernachtungspauschale nur bei ausdrücklicher Auswahl", () => {
+  const result = calculateReport(
+    report({
+      accommodationMode: "PER_DIEM",
+      startAt: new Date(2026, 6, 6, 9, 0),
+      endAt: new Date(2026, 6, 8, 18, 0),
+      perDiemOvernight: 117
+    }),
+    [],
+    settings
+  );
+
+  assert.equal(result.nights, 2);
+  assert.equal(result.lodgingAllowance, 234);
+  assert.equal(result.reimbursement, result.mealAllowance + 234);
 });
 
 test("gewährt bei exakt acht Stunden keine Pauschale", () => {

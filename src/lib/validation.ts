@@ -5,6 +5,7 @@ export const reportSchema = z.object({
   purpose: z.string().trim().min(3).max(500),
   destination: z.string().trim().min(2).max(120),
   countryCode: z.enum(["DE", "AT", "CH"]).default("DE"),
+  accommodationMode: z.enum(["ACTUAL", "PER_DIEM", "PROVIDED"]).default("ACTUAL"),
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),
   transportType: z.string().trim().min(2).max(80),
