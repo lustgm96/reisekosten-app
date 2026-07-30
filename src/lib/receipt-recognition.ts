@@ -44,6 +44,12 @@ async function discardWorker(worker: Worker) {
   }
 }
 
+export async function terminateReceiptWorker() {
+  const worker = await workerPromise?.catch(() => null);
+  workerPromise = null;
+  if (worker) await worker.terminate();
+}
+
 function parseMoney(value: string) {
   const compact = value.replace(/\s/g, "");
   const normalized =
@@ -55,7 +61,7 @@ function parseMoney(value: string) {
 }
 
 function moneyValues(line: string) {
-  return [...line.matchAll(/(?:^|\s)(\d{1,5}(?:[.\s]\d{3})*[,.]\d{2})(?=\s*(?:€|EUR)?(?:\s|$))/gi)]
+  return [...line.matchAll(/(?:^|\s)(\d{1,5}(?:[.\s]\d{3})*[,.]\d{2})(?=\s*(?:€|EUR)?(?:\s|[.,;:|)\]]|$))/gi)]
     .map(match => parseMoney(match[1]))
     .filter((value): value is number => value !== null && value >= 0);
 }
@@ -156,11 +162,23 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
 }
 
 export function recognizeReceipt(image: Buffer) {
+  return recognizeReceiptPages([image]);
+}
+
+export function recognizeReceiptPages(images: Buffer[]) {
+  if (!images.length) throw new Error("Keine Belegseiten vorhanden.");
+
   const job = recognitionQueue.then(async () => {
     const worker = await getWorker();
     try {
-      const result = await worker.recognize(image);
-      return extractReceiptSuggestion(result.data.text, result.data.confidence);
+      const results = [];
+      for (const page of images) {
+        results.push(await worker.recognize(page));
+      }
+      const text = results.map(result => result.data.text).join("\n");
+      const confidence =
+        results.reduce((sum, result) => sum + result.data.confidence, 0) / results.length;
+      return extractReceiptSuggestion(text, confidence);
     } catch (error) {
       await discardWorker(worker);
       throw error;

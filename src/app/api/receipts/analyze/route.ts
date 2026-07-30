@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { recognizeReceipt } from "@/lib/receipt-recognition";
+import { recognizeReceipt, recognizeReceiptPages } from "@/lib/receipt-recognition";
 import { ReceiptFileError, validateReceiptFile } from "@/lib/storage";
+import { renderPdfForOcr } from "@/lib/pdf-rendering";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nicht erlaubt." }, { status: 403 });
   }
   try {
-    validateReceiptFile(file, true);
+    validateReceiptFile(file);
   } catch (error) {
     if (error instanceof ReceiptFileError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -37,7 +38,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const suggestion = await recognizeReceipt(Buffer.from(await file.arrayBuffer()));
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const suggestion =
+      file.type === "application/pdf"
+        ? await renderPdfForOcr(fileBuffer).then(({ images }) => recognizeReceiptPages(images))
+        : await recognizeReceipt(fileBuffer);
     return NextResponse.json(suggestion);
   } catch (error) {
     console.error("Lokale Belegerkennung fehlgeschlagen:", error);

@@ -35,12 +35,6 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
   const [analyzing, setAnalyzing] = useState(false);
 
   async function analyze(file: File) {
-    if (!file.type.startsWith("image/")) {
-      setStatus("PDF-Belege können gespeichert, derzeit aber noch nicht lokal erkannt werden.");
-      setWarnings([]);
-      return;
-    }
-
     setAnalyzing(true);
     setStatus("Beleg wird lokal erkannt …");
     setWarnings([]);
@@ -85,7 +79,7 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
           type="file"
         />
         <div className={`recognition-status${analyzing ? " analyzing" : ""}`} aria-live="polite">
-          {status || "Bildbelege werden automatisch und ausschließlich auf diesem Server ausgewertet."}
+          {status || "Bild- und PDF-Belege werden automatisch und ausschließlich auf diesem Server ausgewertet."}
         </div>
         {warnings.length > 0 && (
           <ul className="recognition-warnings">

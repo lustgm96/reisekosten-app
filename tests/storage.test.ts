@@ -14,15 +14,14 @@ test("akzeptiert unterstützte Bildbelege und PDF für die Ablage", () => {
   assert.doesNotThrow(() => validateReceiptFile(pdf));
 });
 
-test("lehnt PDF nur für die automatische Erkennung ab", () => {
-  const pdf = new File(["beleg"], "beleg.pdf", { type: "application/pdf" });
+test("lehnt nicht unterstützte Dateitypen ab", () => {
+  const text = new File(["beleg"], "beleg.txt", { type: "text/plain" });
 
   assert.throws(
-    () => validateReceiptFile(pdf, true),
+    () => validateReceiptFile(text),
     (error: unknown) =>
       error instanceof ReceiptFileError &&
-      error.status === 415 &&
-      error.message.includes("PDF")
+      error.status === 415
   );
 });
 
