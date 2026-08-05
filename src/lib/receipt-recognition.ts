@@ -8,6 +8,7 @@ export type ReceiptSuggestion = {
   description: string;
   expenseDate: string | null;
   vatAmount: number | null;
+  documentType: "RECEIPT" | "CARD_STATEMENT";
   warnings: string[];
 };
 
@@ -44,18 +45,25 @@ async function discardWorker(worker: Worker) {
   }
 }
 
+export async function terminateReceiptWorker() {
+  const worker = await workerPromise?.catch(() => null);
+  workerPromise = null;
+  if (worker) await worker.terminate();
+}
+
 function parseMoney(value: string) {
   const compact = value.replace(/\s/g, "");
-  const normalized =
-    compact.includes(",")
-      ? compact.replace(/\./g, "").replace(",", ".")
-      : compact;
+  const lastComma = compact.lastIndexOf(",");
+  const lastDot = compact.lastIndexOf(".");
+  const normalized = lastComma > lastDot
+    ? compact.replace(/\./g, "").replace(",", ".")
+    : compact.replace(/,/g, "");
   const amount = Number(normalized);
   return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null;
 }
 
 function moneyValues(line: string) {
-  return [...line.matchAll(/(?:^|\s)(\d{1,5}(?:[.\s]\d{3})*[,.]\d{2})(?=\s*(?:€|EUR)?(?:\s|$))/gi)]
+  return [...line.matchAll(/(?:^|\s)(?:€\s*|EUR\s*)?(\d{1,5}(?:[.,\s]\d{3})*[,.]\d{2})(?=\s*(?:€|EUR)?(?:\s|[.,;:|)\]]|$))/gi)]
     .map(match => parseMoney(match[1]))
     .filter((value): value is number => value !== null && value >= 0);
 }
@@ -80,17 +88,44 @@ function detectDate(text: string) {
       return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
   }
+  const monthNumbers: Record<string, number> = {
+    jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+    may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8, sep: 9,
+    sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11,
+    dec: 12, december: 12
+  };
+  const wordDate = text.match(/\b([0-3]?\d)\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+['’]?(20\d{2}|\d{2})\b/i);
+  if (wordDate) {
+    const year = Number(wordDate[3]) < 100 ? 2000 + Number(wordDate[3]) : Number(wordDate[3]);
+    const month = monthNumbers[wordDate[2].toLowerCase()];
+    const day = Number(wordDate[1]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCDate() === day && date.getTime() <= now.getTime() + 86_400_000) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
   return null;
 }
 
 function detectAmount(lines: string[]) {
-  const totalWords = /(gesamt|summe|total|zu zahlen|endbetrag|zahlbetrag|betrag)/i;
+  const totalWords = /(gesamt|summe|total(?: incl\.?(?: vat)?)?|zu zahlen|endbetrag|zahlbetrag|betrag|amount|payment due|balance due|approval amount|transaction amount)/i;
   const preferred = lines
     .filter(line => totalWords.test(line))
     .flatMap(moneyValues);
   if (preferred.length) return Math.max(...preferred);
   const all = lines.flatMap(moneyValues);
   return all.length ? Math.max(...all) : null;
+}
+
+function detectDocumentType(text: string): ReceiptSuggestion["documentType"] {
+  const statementSignals = [
+    /kreditkartenabrechnung/i,
+    /abrechnung business card/i,
+    /abrechnungssaldo/i,
+    /umsatzdatum\s+buchungsdatum/i,
+    /verf[üu]gungsrahmen/i
+  ].filter(pattern => pattern.test(text)).length;
+  return statementSignals >= 2 ? "CARD_STATEMENT" : "RECEIPT";
 }
 
 function detectVat(lines: string[], total: number | null) {
@@ -132,11 +167,20 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
     .split(/\r?\n/)
     .map(line => line.replace(/\s+/g, " ").trim())
     .filter(Boolean);
-  const amount = detectAmount(lines);
+  const documentType = detectDocumentType(text);
+  let amount = detectAmount(lines);
   const expenseDate = detectDate(text);
   const description = detectDescription(lines);
   const vatAmount = detectVat(lines, amount);
   const warnings: string[] = [];
+  if (documentType === "CARD_STATEMENT") {
+    amount = null;
+    warnings.push("Kreditkartenabrechnung erkannt: Bitte nicht als einzelnen Beleg speichern.");
+  }
+  if (amount !== null && amount > 10000) {
+    amount = null;
+    warnings.push("Der erkannte Betrag ist unplausibel hoch und muss manuell geprüft werden.");
+  }
   if (!expenseDate) warnings.push("Datum konnte nicht sicher erkannt werden.");
   if (amount === null) warnings.push("Gesamtbetrag konnte nicht sicher erkannt werden.");
   if (description === "Beleg") warnings.push("Händler konnte nicht sicher erkannt werden.");
@@ -151,16 +195,29 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
     description,
     expenseDate,
     vatAmount,
+    documentType,
     warnings
   };
 }
 
 export function recognizeReceipt(image: Buffer) {
+  return recognizeReceiptPages([image]);
+}
+
+export function recognizeReceiptPages(images: Buffer[]) {
+  if (!images.length) throw new Error("Keine Belegseiten vorhanden.");
+
   const job = recognitionQueue.then(async () => {
     const worker = await getWorker();
     try {
-      const result = await worker.recognize(image);
-      return extractReceiptSuggestion(result.data.text, result.data.confidence);
+      const results = [];
+      for (const page of images) {
+        results.push(await worker.recognize(page));
+      }
+      const text = results.map(result => result.data.text).join("\n");
+      const confidence =
+        results.reduce((sum, result) => sum + result.data.confidence, 0) / results.length;
+      return extractReceiptSuggestion(text, confidence);
     } catch (error) {
       await discardWorker(worker);
       throw error;

@@ -10,7 +10,6 @@ const receiptMimeTypes = new Set([
   "image/webp",
   "application/pdf"
 ]);
-const receiptImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export class ReceiptFileError extends Error {
   readonly status: number;
@@ -22,17 +21,14 @@ export class ReceiptFileError extends Error {
   }
 }
 
-export function validateReceiptFile(file: unknown, imagesOnly = false): asserts file is File {
+export function validateReceiptFile(file: unknown): asserts file is File {
   if (!(file instanceof File) || !file.size) {
     throw new ReceiptFileError("Bitte einen Beleg auswählen.", 400);
   }
 
-  const allowedTypes = imagesOnly ? receiptImageMimeTypes : receiptMimeTypes;
-  if (!allowedTypes.has(file.type)) {
+  if (!receiptMimeTypes.has(file.type)) {
     throw new ReceiptFileError(
-      imagesOnly
-        ? "Die automatische Erkennung unterstützt zunächst JPG, PNG und WebP. PDF kann weiterhin manuell erfasst werden."
-        : "Erlaubt sind JPG, PNG, WebP und PDF.",
+      "Erlaubt sind JPG, PNG, WebP und PDF.",
       415
     );
   }

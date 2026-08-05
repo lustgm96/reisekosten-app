@@ -37,3 +37,35 @@ test("meldet unsichere Pflichtangaben zur manuellen Prüfung", () => {
   assert.equal(result.expenseDate, null);
   assert.ok(result.warnings.length >= 2);
 });
+
+test("erkennt Kreditkartenabrechnungen und übernimmt keinen Gesamtsaldo", () => {
+  const result = extractReceiptSuggestion(`
+    Abrechnung Business Card Premium (Kreditkarte)
+    Verfügungsrahmen 5000 EUR
+    Umsatzdatum Buchungsdatum Zahlungsempfänger Betrag/EUR
+    Abrechnungssaldo vom 2.5.2026 -1.758,58
+  `, 90);
+  assert.equal(result.documentType, "CARD_STATEMENT");
+  assert.equal(result.amount, null);
+  assert.ok(result.warnings.some(warning => warning.includes("Kreditkartenabrechnung")));
+});
+
+test("blockiert offensichtlich unplausible OCR-Beträge", () => {
+  const result = extractReceiptSuggestion(
+    "Flughafen Düsseldorf\nBetrag EUR 28705,26\n28.05.2026",
+    80
+  );
+  assert.equal(result.amount, null);
+  assert.ok(result.warnings.some(warning => warning.includes("unplausibel")));
+});
+
+test("erkennt englische Datums- und Währungsformate", () => {
+  const result = extractReceiptSuggestion("Clayton Hotels\n26 May '26\nPayment Due €47.60", 85);
+  assert.equal(result.expenseDate, "2026-05-26");
+  assert.equal(result.amount, 47.6);
+});
+
+test("interpretiert US-Tausender- und Dezimaltrennzeichen", () => {
+  const result = extractReceiptSuggestion("Invoice\nTotal EUR 1,758.58\n28.05.2026", 85);
+  assert.equal(result.amount, 1758.58);
+});

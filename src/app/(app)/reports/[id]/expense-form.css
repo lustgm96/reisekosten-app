@@ -30,3 +30,31 @@
   margin: 8px 0 0;
   padding-left: 18px;
 }
+
+.receipt-review-list {
+  display: grid;
+  gap: 14px;
+}
+
+.receipt-review-card {
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.receipt-review-card.needs-review {
+  border-color: var(--warn);
+}
+
+.receipt-review-heading {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+button.compact {
+  padding: 7px 10px;
+}
