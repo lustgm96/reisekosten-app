@@ -3,6 +3,8 @@ import type { Prisma, PaymentType, ReportStatus } from "@prisma/client";
 import type { NumericSettings } from "@/lib/calculation";
 import { calculateReport } from "@/lib/calculation";
 import type { PerDiemRate } from "@/lib/per-diem";
+import { receiptDocumentTitle } from "@/lib/process-number";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 
 type PdfExpense = {
   amount: number | Prisma.Decimal;
@@ -10,6 +12,9 @@ type PdfExpense = {
   description: string;
   expenseDate: Date;
   paymentType: PaymentType;
+  createdAt: Date;
+  mimeType: string | null;
+  storedFileName: string | null;
 };
 
 type PdfComment = {
@@ -33,6 +38,7 @@ export type ReportPdfData = {
   lunches: number;
   privateKilometers: number;
   perDiemOvernight: number | Prisma.Decimal;
+  processNumber: string;
   purpose: string;
   startAt: Date;
   status: ReportStatus;
@@ -197,6 +203,8 @@ export async function createReportPdf(
     labelValue("Reiseziel", report.destination, MARGIN + 269, 238)
   );
   y -= blockHeight;
+  blockHeight = labelValue("Vorgangsnummer", report.processNumber, MARGIN, 238);
+  y -= blockHeight;
   blockHeight = Math.max(
     labelValue("Zeitraum", `${dateTime.format(report.startAt)} bis ${dateTime.format(report.endAt)}`, MARGIN, 238),
     labelValue("Verkehrsmittel", report.transportType, MARGIN + 269, 238)
@@ -224,7 +232,8 @@ export async function createReportPdf(
     y -= 28;
   }
   for (const expense of report.expenses) {
-    const description = wrapText(expense.description || "-", regular, 8.5, 263);
+    const documentTitle = receiptDocumentTitle(report.processNumber, expense.createdAt, report.expenses.indexOf(expense));
+    const description = wrapText(`${expense.description || "-"}\n${documentTitle}`, regular, 8.5, 263);
     const rowHeight = Math.max(31, 27 + Math.max(0, description.length - 1) * 10);
     if (y - rowHeight < 52) {
       addPage();
@@ -366,8 +375,81 @@ export async function createReportPdf(
     });
   });
 
-  pdf.setTitle(`Reisekostenabrechnung - ${report.title}`);
+  pdf.setTitle(`${report.processNumber} - ${report.title}`);
   pdf.setAuthor(company);
   pdf.setSubject(`Reisekostenabrechnung von ${report.employee.name}`);
   return pdf.save();
+}
+
+export type ReceiptAttachment = {
+  bytes: Buffer;
+  createdAt: Date;
+  documentIndex: number;
+  mimeType: string;
+};
+
+export async function appendReceiptsToReportPdf(
+  summaryBytes: Uint8Array,
+  processNumber: string,
+  attachments: ReceiptAttachment[]
+) {
+  const output = await PDFDocument.load(summaryBytes);
+  const regular = await output.embedFont(StandardFonts.Helvetica);
+  const bold = await output.embedFont(StandardFonts.HelveticaBold);
+
+  for (const attachment of attachments) {
+    const title = receiptDocumentTitle(processNumber, attachment.createdAt, attachment.documentIndex);
+    try {
+      if (attachment.mimeType === "application/pdf") {
+        const source = await PDFDocument.load(attachment.bytes);
+        for (const sourcePage of source.getPages()) {
+          const embedded = await output.embedPage(sourcePage);
+          const page = output.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+          page.drawText(title, { x: MARGIN, y: 810, size: 11, font: bold, color: PRIMARY });
+          const scale = Math.min(CONTENT_WIDTH / embedded.width, 748 / embedded.height);
+          page.drawPage(embedded, {
+            x: (PAGE_WIDTH - embedded.width * scale) / 2,
+            y: 38,
+            width: embedded.width * scale,
+            height: embedded.height * scale
+          });
+        }
+        continue;
+      }
+
+      let imageBytes: Uint8Array = attachment.bytes;
+      let imageType = attachment.mimeType;
+      if (imageType === "image/webp") {
+        const sourceImage = await loadImage(attachment.bytes);
+        const canvas = createCanvas(sourceImage.width, sourceImage.height);
+        canvas.getContext("2d").drawImage(sourceImage, 0, 0);
+        imageBytes = canvas.toBuffer("image/png");
+        imageType = "image/png";
+      }
+      const embedded = imageType === "image/png"
+        ? await output.embedPng(imageBytes)
+        : await output.embedJpg(imageBytes);
+      const page = output.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      page.drawText(title, { x: MARGIN, y: 810, size: 11, font: bold, color: PRIMARY });
+      const scale = Math.min(CONTENT_WIDTH / embedded.width, 748 / embedded.height, 1);
+      page.drawImage(embedded, {
+        x: (PAGE_WIDTH - embedded.width * scale) / 2,
+        y: 38 + (748 - embedded.height * scale) / 2,
+        width: embedded.width * scale,
+        height: embedded.height * scale
+      });
+    } catch {
+      const page = output.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      page.drawText(title, { x: MARGIN, y: 810, size: 11, font: bold, color: PRIMARY });
+      page.drawText("Der gespeicherte Beleg konnte nicht in die Sammel-PDF eingebettet werden.", {
+        x: MARGIN,
+        y: 760,
+        size: 10,
+        font: regular,
+        color: TEXT
+      });
+    }
+  }
+
+  return output.save();
 }

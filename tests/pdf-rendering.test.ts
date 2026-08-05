@@ -19,10 +19,12 @@ test("rendert einen PDF-Beleg lokal als PNG für die OCR", async () => {
 
   assert.equal(result.pageCount, 1);
   assert.equal(result.images.length, 1);
+  assert.equal(result.detailImages.length, 1);
+  assert.equal(result.fallbackImages.length, 1);
   assert.deepEqual([...result.images[0].subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
 
   try {
-    const suggestion = await recognizeReceiptPages(result.images);
+    const suggestion = await recognizeReceiptPages(result.images, result.detailImages, result.fallbackImages);
     assert.equal(suggestion.amount, 23.8);
     assert.equal(suggestion.expenseDate, "2026-07-28");
   } finally {

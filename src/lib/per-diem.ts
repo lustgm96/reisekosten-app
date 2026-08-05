@@ -1,44 +1,41 @@
-export type PerDiemRate = {
-  code: string;
-  countryCode: "DE" | "AT" | "CH";
-  label: string;
-  fullDay: number;
-  overnight: number;
-  partialDay: number;
-};
+import { PER_DIEM_RATES_2026, type PerDiemRateDefinition } from "./per-diem-rates-2026.ts";
 
-export const DEFAULT_PER_DIEM_RATES: PerDiemRate[] = [
-  { code: "DE", countryCode: "DE", label: "Deutschland", fullDay: 28, partialDay: 14, overnight: 20 },
-  { code: "AT", countryCode: "AT", label: "Österreich", fullDay: 50, partialDay: 33, overnight: 117 },
-  { code: "CH", countryCode: "CH", label: "Schweiz (übrige Orte)", fullDay: 70, partialDay: 47, overnight: 195 },
-  { code: "CH_BERN", countryCode: "CH", label: "Schweiz – Bern", fullDay: 82, partialDay: 55, overnight: 195 },
-  { code: "CH_GENEVA", countryCode: "CH", label: "Schweiz – Genf", fullDay: 70, partialDay: 47, overnight: 197 }
-];
+export type PerDiemRate = PerDiemRateDefinition;
 
-export const countryLabels = {
-  DE: "Deutschland",
-  AT: "Österreich",
-  CH: "Schweiz"
-} as const;
+export const DEFAULT_PER_DIEM_RATES: PerDiemRate[] = PER_DIEM_RATES_2026;
+
+export const countryOptions = DEFAULT_PER_DIEM_RATES
+  .filter(rate => rate.code === rate.countryCode)
+  .map(rate => ({ code: rate.countryCode, label: rate.label }))
+  .sort((left, right) => left.label.localeCompare(right.label, "de"));
+
+export const countryLabels: Record<string, string> = Object.fromEntries(
+  countryOptions.map(country => [country.code, country.label])
+);
+
+const supportedCountryCodes = new Set(countryOptions.map(country => country.code));
+
+export function isSupportedCountryCode(value: string) {
+  return supportedCountryCodes.has(value);
+}
 
 export function resolvePerDiemRate(
   countryCode: string,
   destination: string,
   rates: PerDiemRate[]
 ) {
-  const normalizedDestination = destination.toLocaleLowerCase("de-DE");
-  const regionalCode =
-    countryCode === "CH" && /\bbern\b/.test(normalizedDestination)
-      ? "CH_BERN"
-      : countryCode === "CH" && /\b(genf|geneva|genève)\b/.test(normalizedDestination)
-        ? "CH_GENEVA"
-        : countryCode;
+  const regionalRate = rates.find(rate =>
+    rate.countryCode === countryCode &&
+    rate.code !== rate.countryCode &&
+    rate.destinationPattern?.test(destination)
+  );
 
   return (
-    rates.find(rate => rate.code === regionalCode) ??
+    regionalRate ??
     rates.find(rate => rate.code === countryCode) ??
-    rates.find(rate => rate.code === "DE") ??
-    DEFAULT_PER_DIEM_RATES[0]
+    rates.find(rate => rate.code === "OTHER") ??
+    rates.find(rate => rate.code === "LU") ??
+    DEFAULT_PER_DIEM_RATES.find(rate => rate.code === "DE")!
   );
 }
 
@@ -52,7 +49,8 @@ export function storedPerDiemRate(
   rates: PerDiemRate[]
 ): PerDiemRate {
   const template =
-    rates.find(rate => rate.code === report.perDiemCode) ?? DEFAULT_PER_DIEM_RATES[0];
+    rates.find(rate => rate.code === report.perDiemCode) ??
+    DEFAULT_PER_DIEM_RATES.find(rate => rate.code === "DE")!;
   return {
     ...template,
     code: report.perDiemCode,

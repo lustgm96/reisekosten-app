@@ -39,9 +39,16 @@ async function main() {
   }
 
   if (!(await db.expenseReport.findFirst({ where: { employeeId: employee.id } }))) {
+    const year = 2026;
+    const sequence = await db.reportNumberSequence.upsert({
+      where: { year },
+      create: { year, nextNumber: 2 },
+      update: { nextNumber: { increment: 1 } }
+    });
     await db.expenseReport.create({
       data: {
         employeeId: employee.id,
+        processNumber: `RK-${year}-${String(sequence.nextNumber - 1).padStart(4, "0")}`,
         title: "Kundenbesuch Nord",
         purpose: "Kundentermine und Produktvorstellung",
         destination: "Hamburg",

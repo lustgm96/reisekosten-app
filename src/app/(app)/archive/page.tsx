@@ -18,7 +18,7 @@ export default async function Archive(){
   });
 
   return <><h1>Archiv</h1><div className="sub">Freigegebene und abgeschlossene Abrechnungen</div>
-  <div className="card"><table><thead><tr><th>Mitarbeiter</th><th>Titel</th><th>Zeitraum</th><th>Status</th><th>Dokumente</th></tr></thead><tbody>
-  {reports.map(r=><tr key={r.id}><td>{r.employee.name}</td><td>{r.title}</td><td>{r.startAt.toLocaleDateString("de-DE")} – {r.endAt.toLocaleDateString("de-DE")}</td><td><StatusBadge status={r.status}/></td><td><Link href={`/reports/${r.id}`}>Öffnen</Link> · <a href={withBasePath(`/api/reports/${r.id}/pdf`)}>PDF</a></td></tr>)}
+  <div className="card"><table><thead><tr><th>Vorgang</th><th>Mitarbeiter</th><th>Titel</th><th>Zeitraum</th><th>Status</th><th>Dokumente</th></tr></thead><tbody>
+  {reports.map(r=><tr key={r.id}><td><strong>{r.processNumber}</strong></td><td>{r.employee.name}</td><td>{r.title}</td><td>{r.startAt.toLocaleDateString("de-DE")} – {r.endAt.toLocaleDateString("de-DE")}</td><td><StatusBadge status={r.status}/></td><td><Link href={`/reports/${r.id}`}>Öffnen</Link> · <a href={withBasePath(`/api/reports/${r.id}/pdf`)}>Sammel-PDF</a></td></tr>)}
   </tbody></table>{reports.length===0&&<p className="small">Noch keine archivierten Abrechnungen.</p>}</div></>
 }

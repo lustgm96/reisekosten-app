@@ -49,6 +49,7 @@ model User {
 
 model ExpenseReport {
   id                String       @id @default(cuid())
+  processNumber     String       @unique
   employeeId        String
   employee          User         @relation(fields: [employeeId], references: [id])
   title             String
@@ -79,6 +80,11 @@ model ExpenseReport {
 
   @@index([employeeId, status])
   @@index([startAt, endAt])
+}
+
+model ReportNumberSequence {
+  year       Int @id
+  nextNumber Int
 }
 
 model ExpenseItem {

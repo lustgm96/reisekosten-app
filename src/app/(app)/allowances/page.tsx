@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getPerDiemRates } from "@/lib/settings";
 import { perDiemSettingId } from "@/lib/per-diem";
+import { PER_DIEM_SOURCE_URL } from "@/lib/per-diem-rates-2026";
 
 export const dynamic = "force-dynamic";
 
@@ -106,11 +107,12 @@ export default async function AllowancesPage() {
           {user.role === "ADMIN" && <button>Pauschalsätze speichern</button>}
         </form>
         <p className="small">
-          Für die Schweiz werden Bern und Genf automatisch aus dem Zielort erkannt. Ansonsten
-          gilt der Satz „Schweiz (übrige Orte)“. Kürzungen: Frühstück 20 %, Mittag- und
-          Abendessen jeweils 40 % des jeweiligen 24-Stunden-Satzes. Die
-          Übernachtungspauschalen gelten nur für eine Arbeitgebererstattung ohne
-          Einzelnachweis.
+          Grundlage: <a href={PER_DIEM_SOURCE_URL} rel="noreferrer" target="_blank">BMF-Auslandspauschalen 2026</a>.
+          Länder- und Ortssätze werden anhand von Reiseland und Zielort automatisch gewählt.
+          Für nicht aufgeführte Länder gilt entsprechend der BMF-Regel der Luxemburg-Satz.
+          Kürzungen: Frühstück 20 %, Mittag- und Abendessen jeweils 40 % des jeweiligen
+          24-Stunden-Satzes. Übernachtungspauschalen gelten nur für eine
+          Arbeitgebererstattung ohne Einzelnachweis.
         </p>
       </div>
     </>

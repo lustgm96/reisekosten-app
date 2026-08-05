@@ -69,3 +69,20 @@ test("interpretiert US-Tausender- und Dezimaltrennzeichen", () => {
   const result = extractReceiptSuggestion("Invoice\nTotal EUR 1,758.58\n28.05.2026", 85);
   assert.equal(result.amount, 1758.58);
 });
+
+test("erkennt OCR-Daten mit Leerzeichen und Komma als Trenner", () => {
+  const result = extractReceiptSuggestion("star Tankstelle\nDatum 13, 05, 2026\nTOTAL 99,79 EUR");
+  assert.equal(result.expenseDate, "2026-05-13");
+  assert.equal(result.amount, 99.79);
+});
+
+test("erkennt englische Steuerangaben und bevorzugt den Steuerbetrag", () => {
+  const result = extractReceiptSuggestion(`
+    Clayton Hotel
+    27 May 2026
+    VAT @ 13.5% 333.04 44.96 EUR
+    Total incl. VAT 378.00 EUR
+  `);
+  assert.equal(result.vatAmount, 44.96);
+  assert.equal(result.amount, 378);
+});

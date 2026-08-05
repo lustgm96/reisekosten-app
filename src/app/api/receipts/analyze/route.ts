@@ -41,14 +41,19 @@ export async function POST(request: Request) {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const suggestion =
       file.type === "application/pdf"
-        ? await renderPdfForOcr(fileBuffer).then(({ images }) => recognizeReceiptPages(images))
+        ? await renderPdfForOcr(fileBuffer).then(({ images, detailImages, fallbackImages }) =>
+            recognizeReceiptPages(images, detailImages, fallbackImages)
+          )
         : await recognizeReceipt(fileBuffer);
     return NextResponse.json(suggestion);
   } catch (error) {
     console.error("Lokale Belegerkennung fehlgeschlagen:", error);
+    const timedOut = error instanceof Error && error.message.includes("Zeitlimit");
     return NextResponse.json(
-      { error: "Der Beleg konnte nicht erkannt werden. Die Angaben können manuell erfasst werden." },
-      { status: 500 }
+      { error: timedOut
+        ? "Die Erkennung hat zu lange gedauert. Bitte Angaben manuell ergänzen."
+        : "Der Beleg konnte nicht erkannt werden. Die Angaben können manuell erfasst werden." },
+      { status: timedOut ? 504 : 500 }
     );
   }
 }

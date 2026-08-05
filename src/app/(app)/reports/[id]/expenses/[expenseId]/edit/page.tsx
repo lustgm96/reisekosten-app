@@ -4,6 +4,7 @@ import { removeStoredFiles, storeUpload } from "@/lib/storage";
 import { expenseSchema } from "@/lib/validation";
 import { notFound, redirect } from "next/navigation";
 import { withBasePath } from "@/lib/paths";
+import { CategoryDescriptionFields } from "./category-description-fields";
 
 const editableStatuses = ["DRAFT", "RETURNED"] as const;
 
@@ -82,24 +83,8 @@ export default async function EditExpense({
                 required
               />
             </div>
-            <div>
-              <label>Kategorie</label>
-              <select name="category" defaultValue={expense.category}>
-                <option>Hotel</option>
-                <option>Bewirtung</option>
-                <option>Parken</option>
-                <option>Taxi</option>
-                <option>Bahn</option>
-                <option>Flug</option>
-                <option>Tanken</option>
-                <option>Sonstiges</option>
-              </select>
-            </div>
           </div>
-          <div>
-            <label>Beschreibung</label>
-            <input name="description" defaultValue={expense.description} required />
-          </div>
+          <CategoryDescriptionFields defaultCategory={expense.category} defaultDescription={expense.description} />
           <div className="row">
             <div>
               <label>Betrag</label>

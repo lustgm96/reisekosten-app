@@ -4,7 +4,7 @@ import { reportSchema } from "@/lib/validation";
 import { notFound, redirect } from "next/navigation";
 import { withBasePath } from "@/lib/paths";
 import { getPerDiemRates } from "@/lib/settings";
-import { resolvePerDiemRate } from "@/lib/per-diem";
+import { countryOptions, resolvePerDiemRate } from "@/lib/per-diem";
 
 const editableStatuses = ["DRAFT", "RETURNED"] as const;
 
@@ -98,9 +98,9 @@ export default async function EditReport({
             <div>
               <label>Reiseland</label>
               <select name="countryCode" defaultValue={report.countryCode}>
-                <option value="DE">Deutschland</option>
-                <option value="AT">Österreich</option>
-                <option value="CH">Schweiz</option>
+                {countryOptions.map(country => (
+                  <option key={country.code} value={country.code}>{country.label}</option>
+                ))}
               </select>
             </div>
             <div>

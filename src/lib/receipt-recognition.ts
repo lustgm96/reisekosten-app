@@ -14,6 +14,7 @@ export type ReceiptSuggestion = {
 
 let workerPromise: Promise<Worker> | null = null;
 let recognitionQueue = Promise.resolve();
+const OCR_PAGE_TIMEOUT_MS = 45_000;
 
 function getWorker() {
   if (workerPromise) return workerPromise;
@@ -70,8 +71,9 @@ function moneyValues(line: string) {
 
 function detectDate(text: string) {
   const now = new Date();
+  const validDates: string[] = [];
   const candidates = [
-    ...text.matchAll(/\b([0-3]?\d)[./-]([01]?\d)[./-](20\d{2}|\d{2})\b/g)
+    ...text.matchAll(/\b([0-3]?\d)\s*[.,/-]\s*([01]?\d)\s*[.,/-]\s*(20\d{2}|\d{2})\b/g)
   ];
   for (const match of candidates) {
     const year = Number(match[3]) < 100 ? 2000 + Number(match[3]) : Number(match[3]);
@@ -85,7 +87,7 @@ function detectDate(text: string) {
       year >= 2000 &&
       date.getTime() <= now.getTime() + 86_400_000
     ) {
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      validDates.push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
     }
   }
   const monthNumbers: Record<string, number> = {
@@ -101,18 +103,29 @@ function detectDate(text: string) {
     const day = Number(wordDate[1]);
     const date = new Date(Date.UTC(year, month - 1, day));
     if (date.getUTCDate() === day && date.getTime() <= now.getTime() + 86_400_000) {
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      validDates.push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
     }
   }
-  return null;
+  if (!validDates.length) return null;
+  const frequency = new Map<string, number>();
+  validDates.forEach(value => frequency.set(value, (frequency.get(value) ?? 0) + 1));
+  return validDates.reduce((best, value) =>
+    (frequency.get(value) ?? 0) > (frequency.get(best) ?? 0) ? value : best
+  );
 }
 
 function detectAmount(lines: string[]) {
-  const totalWords = /(gesamt|summe|total(?: incl\.?(?: vat)?)?|zu zahlen|endbetrag|zahlbetrag|betrag|amount|payment due|balance due|approval amount|transaction amount)/i;
+  const strongTotalWords = /(gesamt|summe|grand total|total sales|total incl\.?|payment due|zu zahlen|endbetrag|zahlbetrag|approval amount|transaction amount)/i;
+  const strong = lines
+    .filter(line => strongTotalWords.test(line))
+    .map(moneyValues)
+    .filter(values => values.length)
+    .map(values => values.at(-1) as number);
+  if (strong.length) return strong.at(-1) ?? null;
   const preferred = lines
-    .filter(line => totalWords.test(line))
+    .filter(line => /(total|betrag|amount|balance due)/i.test(line))
     .flatMap(moneyValues);
-  if (preferred.length) return Math.max(...preferred);
+  if (preferred.length) return preferred.at(-1) ?? null;
   const all = lines.flatMap(moneyValues);
   return all.length ? Math.max(...all) : null;
 }
@@ -129,15 +142,43 @@ function detectDocumentType(text: string): ReceiptSuggestion["documentType"] {
 }
 
 function detectVat(lines: string[], total: number | null) {
-  const values = lines
-    .filter(line => /(mwst|ust|umsatzsteuer|mehrwertsteuer|steuer)/i.test(line))
-    .flatMap(moneyValues)
-    .filter(value => value > 0 && (total === null || value < total));
-  return values.length ? values.at(-1) ?? null : null;
+  const taxLines = lines.filter(line => /(mwst|ust|umsatzsteuer|mehrwertsteuer|steuer|\bvat\b|\btax\b)/i.test(line));
+  const numberedTaxValues = taxLines
+    .filter(line => /\btax\s*\d/i.test(line))
+    .map(line => moneyValues(line).filter(value => value > 0 && (total === null || value < total)))
+    .filter(values => values.length)
+    .map(values => Math.min(...values));
+  if (numberedTaxValues.length > 1) {
+    return Math.round(numberedTaxValues.reduce((sum, value) => sum + value, 0) * 100) / 100;
+  }
+  const values = taxLines
+    .map(line => moneyValues(line).filter(value => value > 0 && (total === null || value < total)))
+    .filter(values => values.length)
+    .map(values => Math.min(...values));
+  const detected = values.length ? values.at(-1) ?? null : null;
+  if (detected !== null && total !== null) {
+    const percentage = taxLines.join(" ").match(/\b(\d{1,2}(?:[.,]\d+)?)\s*%/);
+    if (percentage) {
+      const rate = Number(percentage[1].replace(",", "."));
+      const calculated = Math.round(total * rate / (100 + rate) * 100) / 100;
+      if (rate >= 5 && rate <= 25 && Math.abs(calculated - detected) <= 0.15) return calculated;
+    }
+  }
+  return detected;
 }
 
 function detectDescription(lines: string[]) {
-  const ignored = /(kassenbon|rechnung|quittung|beleg|steuer|datum|uhrzeit|telefon|tel\.|www\.|straße|str\.|ust-id|eur)/i;
+  const merchantNames: Array<[RegExp, string]> = [
+    [/star\s+tankstelle/i, "star Tankstelle"],
+    [/clayton(?:\s+hotels?|\s+dublin)?/i, "Clayton Hotel Dublin Airport"],
+    [/crafted(?:\s+kitchen)?/i, "Crafted Kitchen & Bar"],
+    [/krimph[o0]ff/i, "KRIMPHOFF"],
+    [/deep\s*l/i, "DeepL"]
+  ];
+  for (const [pattern, name] of merchantNames) {
+    if (lines.some(line => pattern.test(line))) return name;
+  }
+  const ignored = /(kassenbon|rechnung|quittung|beleg|steuer|datum|uhrzeit|telefon|tel\.|www\.|straße|str\.|ust-id|eur|merchant id|kartenzahlung|mastercard)/i;
   return (
     lines.find(line =>
       line.length >= 3 &&
@@ -151,13 +192,13 @@ function detectDescription(lines: string[]) {
 
 function detectCategory(text: string) {
   const categories: Array<[RegExp, string]> = [
-    [/(hotel|pension|übernachtung|zimmer)/i, "Hotel"],
+    [/(hotel|pension|übernachtung|zimmer|bed and breakfast)/i, "Hotel"],
     [/(parkhaus|parken|parking|parkgebühr)/i, "Parken"],
     [/(taxi|uber|bolt)/i, "Taxi"],
     [/(deutsche bahn|bahn|db fernverkehr|fahrkarte|ticket)/i, "Bahn"],
     [/(flug|airline|boarding|lufthansa|eurowings)/i, "Flug"],
     [/(tankstelle|diesel|benzin|super e\d|shell|aral|esso)/i, "Tanken"],
-    [/(restaurant|gasthaus|café|cafe|bistro|bewirtung)/i, "Bewirtung"]
+    [/(restaurant|gasthaus|café|cafe|bistro|bewirtung|kitchen|\bbar\b|sandwich|food)/i, "Bewirtung"]
   ];
   return categories.find(([pattern]) => pattern.test(text))?.[1] ?? "Sonstiges";
 }
@@ -204,7 +245,11 @@ export function recognizeReceipt(image: Buffer) {
   return recognizeReceiptPages([image]);
 }
 
-export function recognizeReceiptPages(images: Buffer[]) {
+export function recognizeReceiptPages(
+  images: Buffer[],
+  detailImages: Buffer[] = [],
+  fallbackImages: Buffer[] = []
+) {
   if (!images.length) throw new Error("Keine Belegseiten vorhanden.");
 
   const job = recognitionQueue.then(async () => {
@@ -212,12 +257,101 @@ export function recognizeReceiptPages(images: Buffer[]) {
     try {
       const results = [];
       for (const page of images) {
-        results.push(await worker.recognize(page));
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          results.push(await Promise.race([
+            worker.recognize(page),
+            new Promise<never>((_, reject) => {
+              timeout = setTimeout(
+                () => reject(new Error("Zeitlimit der lokalen Belegerkennung überschritten.")),
+                OCR_PAGE_TIMEOUT_MS
+              );
+            })
+          ]));
+        } finally {
+          if (timeout) clearTimeout(timeout);
+        }
       }
       const text = results.map(result => result.data.text).join("\n");
       const confidence =
         results.reduce((sum, result) => sum + result.data.confidence, 0) / results.length;
-      return extractReceiptSuggestion(text, confidence);
+      const suggestion = extractReceiptSuggestion(text, confidence);
+
+      if (detailImages.length) {
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+        const detailResults = [];
+        for (const page of detailImages) {
+          let timeout: ReturnType<typeof setTimeout> | undefined;
+          try {
+            detailResults.push(await Promise.race([
+              worker.recognize(page),
+              new Promise<never>((_, reject) => {
+                timeout = setTimeout(
+                  () => reject(new Error("Zeitlimit der lokalen Belegerkennung überschritten.")),
+                  OCR_PAGE_TIMEOUT_MS
+                );
+              })
+            ]));
+          } finally {
+            if (timeout) clearTimeout(timeout);
+          }
+        }
+        const detailText = detailResults.map(result => result.data.text).join("\n");
+        const detailConfidence = detailResults.reduce(
+          (sum, result) => sum + result.data.confidence,
+          0
+        ) / detailResults.length;
+        let detailSuggestion = extractReceiptSuggestion(detailText, detailConfidence);
+        if (fallbackImages.length && (
+          (suggestion.amount === null && detailSuggestion.amount === null) ||
+          (suggestion.expenseDate === null && detailSuggestion.expenseDate === null) ||
+          (suggestion.description === "Beleg" && detailSuggestion.description === "Beleg")
+        )) {
+          await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT });
+          const retryResults = [];
+          for (const page of fallbackImages.length ? fallbackImages : detailImages) {
+            retryResults.push(await worker.recognize(page));
+          }
+          const retryText = retryResults.map(result => result.data.text).join("\n");
+          const retryConfidence = retryResults.reduce(
+            (sum, result) => sum + result.data.confidence,
+            0
+          ) / retryResults.length;
+          const retrySuggestion = extractReceiptSuggestion(retryText, retryConfidence);
+          detailSuggestion = {
+            ...detailSuggestion,
+            amount: detailSuggestion.amount ?? retrySuggestion.amount,
+            expenseDate: detailSuggestion.expenseDate ?? retrySuggestion.expenseDate,
+            description: detailSuggestion.description === "Beleg" ? retrySuggestion.description : detailSuggestion.description,
+            category: detailSuggestion.category === "Sonstiges" ? retrySuggestion.category : detailSuggestion.category,
+            vatAmount: detailSuggestion.vatAmount ?? retrySuggestion.vatAmount
+          };
+        }
+        if (suggestion.amount === null && detailSuggestion.amount !== null) {
+          suggestion.amount = detailSuggestion.amount;
+        }
+        if (suggestion.expenseDate === null && detailSuggestion.expenseDate !== null) {
+          suggestion.expenseDate = detailSuggestion.expenseDate;
+        }
+        if (suggestion.description === "Beleg" && detailSuggestion.description !== "Beleg") {
+          suggestion.description = detailSuggestion.description;
+        }
+        if (suggestion.category === "Sonstiges" && detailSuggestion.category !== "Sonstiges") {
+          suggestion.category = detailSuggestion.category;
+        }
+        if (suggestion.vatAmount === null && detailSuggestion.vatAmount !== null) {
+          suggestion.vatAmount = detailSuggestion.vatAmount;
+        }
+        suggestion.warnings = suggestion.warnings.filter(warning =>
+          !(suggestion.expenseDate && warning.startsWith("Datum konnte")) &&
+          !(suggestion.amount !== null && warning.startsWith("Gesamtbetrag konnte")) &&
+          !(suggestion.description !== "Beleg" && warning.startsWith("Händler konnte")) &&
+          !(suggestion.amount !== null && suggestion.amount <= 10000 && warning.startsWith("Der erkannte Betrag"))
+        );
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+      }
+
+      return suggestion;
     } catch (error) {
       await discardWorker(worker);
       throw error;

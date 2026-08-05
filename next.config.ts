@@ -4,7 +4,17 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/Reisekosten";
 
 const nextConfig: NextConfig = {
   basePath,
-  serverExternalPackages: ["@napi-rs/canvas", "pdfjs-dist"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "100mb"
+    }
+  },
+  serverExternalPackages: [
+    "@napi-rs/canvas",
+    "@tesseract.js-data/deu",
+    "pdfjs-dist",
+    "tesseract.js"
+  ],
   trailingSlash: true
 };
 

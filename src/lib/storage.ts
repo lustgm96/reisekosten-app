@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+export const MAX_RECEIPT_FILES = 20;
 
 const receiptMimeTypes = new Set([
   "image/jpeg",
@@ -59,4 +60,9 @@ export async function removeStoredFiles(storedFileNames: Array<string | null>) {
   await Promise.allSettled(
     fileNames.map(fileName => fs.unlink(path.join(uploadDir, path.basename(fileName))))
   );
+}
+
+export async function readStoredFile(storedFileName: string) {
+  const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
+  return fs.readFile(path.join(uploadDir, path.basename(storedFileName)));
 }

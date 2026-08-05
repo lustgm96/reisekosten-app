@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { isSupportedCountryCode } from "./per-diem.ts";
 
 export const reportSchema = z.object({
   title: z.string().trim().min(2).max(120),
   purpose: z.string().trim().min(3).max(500),
   destination: z.string().trim().min(2).max(120),
-  countryCode: z.enum(["DE", "AT", "CH"]).default("DE"),
+  countryCode: z.string().refine(isSupportedCountryCode, "Unbekanntes Reiseland").default("DE"),
   accommodationMode: z.enum(["ACTUAL", "PER_DIEM", "PROVIDED"]).default("ACTUAL"),
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),

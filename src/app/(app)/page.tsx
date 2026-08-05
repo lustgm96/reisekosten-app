@@ -17,7 +17,7 @@ export default async function Dashboard(){
     <div className="card"><div className="label">Abgeschlossen</div><div className="value">{reports.filter(x=>x.status==="COMPLETED").length}</div></div>
   </section>
   <div className="actions" style={{marginTop:16}}><Link className="button" href="/reports/new">Neue Abrechnung</Link></div>
-  <div className="card" style={{marginTop:16}}><h2>Letzte Abrechnungen</h2><table><thead><tr><th>Mitarbeiter</th><th>Titel</th><th>Zeitraum</th><th>Belege</th><th>Status</th><th></th></tr></thead><tbody>
-  {reports.map(r=><tr key={r.id}><td>{r.employee.name}</td><td>{r.title}</td><td>{r.startAt.toLocaleDateString("de-DE")} – {r.endAt.toLocaleDateString("de-DE")}</td><td>{r.expenses.length}</td><td><StatusBadge status={r.status}/></td><td><Link href={`/reports/${r.id}`}>Öffnen</Link></td></tr>)}
+  <div className="card" style={{marginTop:16}}><h2>Letzte Abrechnungen</h2><table><thead><tr><th>Vorgang</th><th>Mitarbeiter</th><th>Titel</th><th>Zeitraum</th><th>Belege</th><th>Status</th><th></th></tr></thead><tbody>
+  {reports.map(r=><tr key={r.id}><td><strong>{r.processNumber}</strong></td><td>{r.employee.name}</td><td>{r.title}</td><td>{r.startAt.toLocaleDateString("de-DE")} – {r.endAt.toLocaleDateString("de-DE")}</td><td>{r.expenses.length}</td><td><StatusBadge status={r.status}/></td><td><Link href={`/reports/${r.id}`}>Öffnen</Link></td></tr>)}
   </tbody></table></div></>
 }
