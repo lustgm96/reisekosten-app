@@ -4,6 +4,7 @@ import { currentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { expenseSchema } from "@/lib/validation";
 import { ReceiptFileError, removeStoredFiles, storeUpload, validateReceiptFile } from "@/lib/storage";
+import { canEmployeeEditReport } from "@/lib/report-editing";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!user) return NextResponse.json({ error: "Die Anmeldung ist abgelaufen. Bitte erneut anmelden." }, { status: 401 });
   const { id } = await params;
   const report = await db.expenseReport.findUnique({ where: { id } });
-  if (!report || report.employeeId !== user.id || !["DRAFT", "RETURNED"].includes(report.status)) {
+  if (!report || !canEmployeeEditReport(user.id, report.employeeId, report.status)) {
     return NextResponse.json({ error: "Die Abrechnung darf nicht bearbeitet werden." }, { status: 403 });
   }
 

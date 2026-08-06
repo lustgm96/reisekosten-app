@@ -2,32 +2,15 @@
 
 import { useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import {
+  entryFromSuggestion,
+  expenseCategories,
+  failedReceiptEntry,
+  missingReceiptFields,
+  type ReceiptEntry,
+  type ReceiptSuggestion
+} from "@/lib/receipt-entry";
 import "./expense-form.css";
-
-type Suggestion = {
-  amount: number | null;
-  category: string;
-  confidence: number;
-  description: string;
-  documentType: "RECEIPT" | "CARD_STATEMENT";
-  expenseDate: string | null;
-  vatAmount: number | null;
-  warnings: string[];
-};
-
-type Entry = {
-  fileIndex: number;
-  fileName: string;
-  expenseDate: string;
-  category: string;
-  description: string;
-  amount: string;
-  vatAmount: string;
-  paymentType: "PRIVATE" | "COMPANY_CARD" | "CASH";
-  confidence: number;
-  documentType: Suggestion["documentType"];
-  warnings: string[];
-};
 
 type Preview = { fileIndex: number; mimeType: string; url: string };
 
@@ -43,7 +26,7 @@ const REQUEST_TIMEOUT_MS = 55_000;
 export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps) {
   const router = useRouter();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<ReceiptEntry[]>([]);
   const [previews, setPreviews] = useState<Preview[]>([]);
   const [status, setStatus] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -80,7 +63,7 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
     setActiveIndex(0);
     setModalOpen(true);
     setSaveError("");
-    const results: Entry[] = [];
+    const results: ReceiptEntry[] = [];
 
     for (const [fileIndex, file] of files.entries()) {
       const startedAt = Date.now();
@@ -101,38 +84,14 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
           body: formData,
           signal: controller.signal
         });
-        const result = await response.json() as Suggestion & { error?: string };
+        const result = await response.json() as ReceiptSuggestion & { error?: string };
         if (!response.ok) throw new Error(result.error || "Belegerkennung fehlgeschlagen.");
-        results.push({
-          fileIndex,
-          fileName: file.name,
-          expenseDate: result.expenseDate ?? "",
-          category: result.category || "Sonstiges",
-          description: result.description === "Beleg" ? "" : result.description,
-          amount: result.amount === null ? "" : result.amount.toFixed(2),
-          vatAmount: result.vatAmount === null ? "" : result.vatAmount.toFixed(2),
-          paymentType: "PRIVATE",
-          confidence: result.confidence,
-          documentType: result.documentType,
-          warnings: result.warnings
-        });
+        results.push(entryFromSuggestion(file, fileIndex, result));
       } catch (error) {
         const timedOut = error instanceof DOMException && error.name === "AbortError";
-        results.push({
-          fileIndex,
-          fileName: file.name,
-          expenseDate: "",
-          category: "Sonstiges",
-          description: "",
-          amount: "",
-          vatAmount: "",
-          paymentType: "PRIVATE",
-          confidence: 0,
-          documentType: "RECEIPT",
-          warnings: [timedOut
+        results.push(failedReceiptEntry(file, fileIndex, timedOut
             ? "Die Erkennung hat zu lange gedauert. Bitte Angaben manuell ergänzen."
-            : error instanceof Error ? error.message : "Belegerkennung fehlgeschlagen."]
-        });
+            : error instanceof Error ? error.message : "Belegerkennung fehlgeschlagen."));
       } finally {
         window.clearInterval(progressTimer);
         window.clearTimeout(requestTimer);
@@ -172,7 +131,7 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
     void analyzeFiles(files);
   }
 
-  function updateEntry(fileIndex: number, values: Partial<Entry>) {
+  function updateEntry(fileIndex: number, values: Partial<ReceiptEntry>) {
     setEntries(current => current.map(entry =>
       entry.fileIndex === fileIndex ? { ...entry, ...values } : entry
     ));
@@ -195,13 +154,9 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
       setStatus(`${receipt.fileName} wurde nicht als Ausgabe übernommen.`);
       return;
     }
-    if (!receipt.expenseDate || receipt.description.trim().length < 2 || !(Number(receipt.amount) > 0)) {
-      const missing = [
-        !receipt.expenseDate ? "Datum" : "",
-        receipt.description.trim().length < 2 ? "Beschreibung" : "",
-        !(Number(receipt.amount) > 0) ? "Gesamtbetrag" : ""
-      ].filter(Boolean).join(", ");
-      setSaveError(`Bitte ${missing} prüfen bzw. ergänzen.`);
+    const missing = missingReceiptFields(receipt);
+    if (missing.length) {
+      setSaveError(`Bitte ${missing.join(", ")} prüfen bzw. ergänzen.`);
       setStatus(`${receipt.fileName} ist noch unvollständig.`);
       return;
     }
@@ -297,9 +252,7 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
                   {activeEntry.warnings.length > 0 && <ul className="recognition-warnings">{activeEntry.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
                   <div className="row">
                     <div><label>Datum</label><input required type="date" value={activeEntry.expenseDate} onChange={event => updateEntry(activeEntry.fileIndex, { expenseDate: event.target.value })} /></div>
-                    <div><label>Kategorie</label><select value={activeEntry.category} onChange={event => updateEntry(activeEntry.fileIndex, { category: event.target.value })}>
-                      <option>Hotel</option><option>Bewirtung</option><option>Parken</option><option>Taxi</option><option>Bahn</option><option>Flug</option><option>Tanken</option><option>Sonstiges</option>
-                    </select></div>
+                    <div><label>Kategorie</label><select value={activeEntry.category} onChange={event => updateEntry(activeEntry.fileIndex, { category: event.target.value })}>{expenseCategories.map(category => <option key={category}>{category}</option>)}</select></div>
                   </div>
                   <div>
                     <label>Händler / Beschreibung</label>
@@ -309,7 +262,7 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
                   <div className="row">
                     <div><label>Gesamtbetrag</label><input min="0.01" required step=".01" type="number" value={activeEntry.amount} onChange={event => updateEntry(activeEntry.fileIndex, { amount: event.target.value })} /></div>
                   </div>
-                  <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as Entry["paymentType"] })}>
+                  <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as ReceiptEntry["paymentType"] })}>
                     <option value="PRIVATE">Privat ausgelegt</option><option value="COMPANY_CARD">Firmenkarte</option><option value="CASH">Bar</option>
                   </select></div>
                 </>}

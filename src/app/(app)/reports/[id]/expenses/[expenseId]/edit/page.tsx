@@ -5,13 +5,8 @@ import { expenseSchema } from "@/lib/validation";
 import { notFound, redirect } from "next/navigation";
 import { withBasePath } from "@/lib/paths";
 import { CategoryDescriptionFields } from "./category-description-fields";
-
-const editableStatuses = ["DRAFT", "RETURNED"] as const;
-
-function dateValue(date: Date) {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
+import { dateInputValue } from "@/lib/date-input";
+import { canEmployeeEditReport } from "@/lib/report-editing";
 
 export default async function EditExpense({
   params
@@ -26,10 +21,7 @@ export default async function EditExpense({
   });
 
   if (!expense || expense.reportId !== id) notFound();
-  if (
-    expense.report.employeeId !== user.id ||
-    !editableStatuses.includes(expense.report.status as (typeof editableStatuses)[number])
-  ) {
+  if (!canEmployeeEditReport(user.id, expense.report.employeeId, expense.report.status)) {
     redirect(`/reports/${id}`);
   }
 
@@ -41,11 +33,7 @@ export default async function EditExpense({
       include: { report: true }
     });
 
-    if (
-      current.reportId !== id ||
-      current.report.employeeId !== actor.id ||
-      !editableStatuses.includes(current.report.status as (typeof editableStatuses)[number])
-    ) {
+    if (current.reportId !== id || !canEmployeeEditReport(actor.id, current.report.employeeId, current.report.status)) {
       throw new Error("Nicht erlaubt");
     }
 
@@ -82,7 +70,7 @@ export default async function EditExpense({
               <input
                 name="expenseDate"
                 type="date"
-                defaultValue={dateValue(expense.expenseDate)}
+                defaultValue={dateInputValue(expense.expenseDate)}
                 required
               />
             </div>
