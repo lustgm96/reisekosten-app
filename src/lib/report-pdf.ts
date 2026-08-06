@@ -5,6 +5,7 @@ import { calculateReport } from "@/lib/calculation";
 import type { PerDiemRate } from "@/lib/per-diem";
 import { receiptDocumentTitle } from "@/lib/process-number";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { formatTransportSelection } from "@/lib/transport";
 
 type PdfExpense = {
   amount: number | Prisma.Decimal;
@@ -15,6 +16,7 @@ type PdfExpense = {
   createdAt: Date;
   mimeType: string | null;
   storedFileName: string | null;
+  vatAmount: number | Prisma.Decimal;
 };
 
 type PdfComment = {
@@ -207,7 +209,14 @@ export async function createReportPdf(
   y -= blockHeight;
   blockHeight = Math.max(
     labelValue("Zeitraum", `${dateTime.format(report.startAt)} bis ${dateTime.format(report.endAt)}`, MARGIN, 238),
-    labelValue("Verkehrsmittel", report.transportType, MARGIN + 269, 238)
+    labelValue("Verkehrsmittel", formatTransportSelection(report.transportType), MARGIN + 269, 238)
+  );
+  y -= blockHeight + 8;
+  blockHeight = labelValue(
+    "Gestellte Mahlzeiten",
+    `${report.breakfasts} Frühstück · ${report.lunches} Mittagessen · ${report.dinners} Abendessen`,
+    MARGIN,
+    CONTENT_WIDTH
   );
   y -= blockHeight + 8;
 
@@ -233,7 +242,7 @@ export async function createReportPdf(
   }
   for (const expense of report.expenses) {
     const documentTitle = receiptDocumentTitle(report.processNumber, expense.createdAt, report.expenses.indexOf(expense));
-    const description = wrapText(`${expense.description || "-"}\n${documentTitle}`, regular, 8.5, 263);
+    const description = wrapText(`${expense.description || "-"}\nMwSt.: ${eur.format(Number(expense.vatAmount))}\n${documentTitle}`, regular, 8.5, 263);
     const rowHeight = Math.max(31, 27 + Math.max(0, description.length - 1) * 10);
     if (y - rowHeight < 52) {
       addPage();

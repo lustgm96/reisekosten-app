@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { withBasePath } from "@/lib/paths";
 import { getPerDiemRates } from "@/lib/settings";
 import { countryOptions, resolvePerDiemRate } from "@/lib/per-diem";
+import { TransportFields } from "../../transport-fields";
 
 const editableStatuses = ["DRAFT", "RETURNED"] as const;
 
@@ -66,7 +67,12 @@ export default async function EditReport({
         perDiemCode: rate.code,
         perDiemFullDay: rate.fullDay,
         perDiemPartialDay: rate.partialDay,
-        perDiemOvernight: rate.overnight
+        perDiemOvernight: rate.overnight,
+        breakfasts: current.startAt.getTime() === values.startAt.getTime() && current.endAt.getTime() === values.endAt.getTime() ? current.breakfasts : 0,
+        lunches: current.startAt.getTime() === values.startAt.getTime() && current.endAt.getTime() === values.endAt.getTime() ? current.lunches : 0,
+        dinners: current.startAt.getTime() === values.startAt.getTime() && current.endAt.getTime() === values.endAt.getTime() ? current.dinners : 0,
+        providedMealsJson: current.startAt.getTime() === values.startAt.getTime() && current.endAt.getTime() === values.endAt.getTime() ? current.providedMealsJson : "[]",
+        mealsReviewedAt: current.startAt.getTime() === values.startAt.getTime() && current.endAt.getTime() === values.endAt.getTime() ? current.mealsReviewedAt : null
       }
     });
     redirect(`/reports/${id}`);
@@ -128,47 +134,7 @@ export default async function EditReport({
               />
             </div>
           </div>
-          <div className="row">
-            <div>
-              <label>Verkehrsmittel</label>
-              <select name="transportType" defaultValue={report.transportType}>
-                <option>Firmenwagen</option>
-                <option>Privat-Pkw</option>
-                <option>Bahn</option>
-                <option>Flug</option>
-                <option>Sonstiges</option>
-              </select>
-            </div>
-            <div>
-              <label>Privat gefahrene Kilometer</label>
-              <input
-                name="privateKilometers"
-                type="number"
-                min="0"
-                step="1"
-                defaultValue={report.privateKilometers}
-              />
-            </div>
-          </div>
-          <div className="row3">
-            <div>
-              <label>Frühstücke</label>
-              <input
-                name="breakfasts"
-                type="number"
-                min="0"
-                defaultValue={report.breakfasts}
-              />
-            </div>
-            <div>
-              <label>Mittagessen</label>
-              <input name="lunches" type="number" min="0" defaultValue={report.lunches} />
-            </div>
-            <div>
-              <label>Abendessen</label>
-              <input name="dinners" type="number" min="0" defaultValue={report.dinners} />
-            </div>
-          </div>
+          <TransportFields defaultKilometers={report.privateKilometers} defaultValue={report.transportType}/>
           <div className="actions">
             <button>Änderungen speichern</button>
             <a className="button secondary" href={withBasePath(`/reports/${id}`)}>

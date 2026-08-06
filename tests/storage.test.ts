@@ -14,6 +14,16 @@ test("akzeptiert unterstützte Bildbelege und PDF für die Ablage", () => {
   assert.doesNotThrow(() => validateReceiptFile(pdf));
 });
 
+test("akzeptiert Multipart-Dateien aus einer anderen JavaScript-Umgebung", () => {
+  const upload = {
+    name: "beleg.pdf",
+    type: "application/pdf",
+    size: 12,
+    arrayBuffer: async () => new ArrayBuffer(12)
+  };
+  assert.doesNotThrow(() => validateReceiptFile(upload));
+});
+
 test("lehnt nicht unterstützte Dateitypen ab", () => {
   const text = new File(["beleg"], "beleg.txt", { type: "text/plain" });
 

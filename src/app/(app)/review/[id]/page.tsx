@@ -6,6 +6,8 @@ import { getNumericSettings, getPerDiemRates } from "@/lib/settings";
 import { calculateReport } from "@/lib/calculation";
 import { countryLabels, storedPerDiemRate } from "@/lib/per-diem";
 import { withBasePath } from "@/lib/paths";
+import { revalidatePath } from "next/cache";
+import { formatTransportSelection } from "@/lib/transport";
 
 const eur=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
 
@@ -24,6 +26,19 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
   const rates=await getPerDiemRates();
   const rate=storedPerDiemRate(report,rates);
   const totals=calculateReport(report,report.expenses,await getNumericSettings(),rate);
+
+  async function updateVat(fd:FormData){
+    "use server";
+    const actor=await requireUser();
+    if(actor.role==="EMPLOYEE")throw new Error("Nicht erlaubt");
+    const expenseId=String(fd.get("expenseId"));
+    const expense=await db.expenseItem.findUniqueOrThrow({where:{id:expenseId},include:{report:true}});
+    if(expense.reportId!==id||expense.report.status!=="SUBMITTED")throw new Error("Nicht erlaubt");
+    const vatAmount=Number(String(fd.get("vatAmount")??"").replace(",","."));
+    if(!Number.isFinite(vatAmount)||vatAmount<0||vatAmount>Number(expense.amount))throw new Error("Bitte einen gültigen MwSt.-Betrag angeben.");
+    await db.expenseItem.update({where:{id:expenseId},data:{vatAmount}});
+    revalidatePath(`/review/${id}`);
+  }
 
   async function decide(fd:FormData){
     "use server";
@@ -62,14 +77,16 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
         <tr><th>Übernachtung</th><td>{report.accommodationMode==="PER_DIEM"?`Pauschale (${eur.format(Number(report.perDiemOvernight))} je Nacht)`:report.accommodationMode==="PROVIDED"?"Gestellt / keine Erstattung":"Tatsächliche Kosten laut Beleg"}</td></tr>
         <tr><th>Zeitraum</th><td>{report.startAt.toLocaleString("de-DE")} – {report.endAt.toLocaleString("de-DE")}</td></tr>
         <tr><th>Zweck</th><td>{report.purpose}</td></tr>
+        <tr><th>Verkehrsmittel</th><td>{formatTransportSelection(report.transportType)}</td></tr>
       </tbody></table>
 
       <h2 style={{marginTop:22}}>Ausgaben</h2>
-      <table><thead><tr><th>Datum</th><th>Beschreibung</th><th>Zahlung</th><th>Betrag</th></tr></thead><tbody>
+      <table><thead><tr><th>Datum</th><th>Beschreibung</th><th>Zahlung</th><th>MwSt.</th><th>Betrag</th></tr></thead><tbody>
       {report.expenses.map(x=><tr key={x.id}>
         <td>{x.expenseDate.toLocaleDateString("de-DE")}</td>
         <td>{x.description}{x.storedFileName&&<> · <a href={withBasePath(`/api/files/${x.id}`)}>Beleg</a></>}</td>
         <td>{x.paymentType}</td>
+        <td><form action={updateVat} className="table-actions"><input name="expenseId" type="hidden" value={x.id}/><input aria-label={`MwSt. für ${x.description}`} min="0" max={x.amount.toString()} name="vatAmount" step=".01" style={{minWidth:90}} type="number" defaultValue={x.vatAmount.toString()}/><button className="secondary">Speichern</button></form></td>
         <td>{eur.format(Number(x.amount))}</td>
       </tr>)}
       </tbody></table>

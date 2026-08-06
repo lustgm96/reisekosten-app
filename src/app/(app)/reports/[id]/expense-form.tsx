@@ -32,16 +32,17 @@ type Entry = {
 type Preview = { fileIndex: number; mimeType: string; url: string };
 
 type ExpenseFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
   analyzeUrl: string;
   reportId: string;
+  saveUrl: string;
 };
 
 const MAX_FILES = 20;
 const REQUEST_TIMEOUT_MS = 55_000;
 
-export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) {
+export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps) {
   const router = useRouter();
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [previews, setPreviews] = useState<Preview[]>([]);
   const [status, setStatus] = useState("");
@@ -60,6 +61,18 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [analyzing, modalOpen, saving]);
+
+  useEffect(() => {
+    if (!modalOpen || analyzing || saving || entries.length || !uploadedFiles.length) return;
+    setModalOpen(false);
+    setUploadedFiles([]);
+    setPreviews(current => {
+      current.forEach(preview => URL.revokeObjectURL(preview.url));
+      return [];
+    });
+    setUploadKey(key => key + 1);
+    setStatus("Alle Belege wurden bearbeitet.");
+  }, [analyzing, entries.length, modalOpen, saving, uploadedFiles.length]);
 
   async function analyzeFiles(files: File[]) {
     setAnalyzing(true);
@@ -140,12 +153,14 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
   function selectFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length > MAX_FILES) {
+      setUploadedFiles([]);
       setEntries([]);
       setStatus(`Bitte höchstens ${MAX_FILES} Belege auf einmal auswählen.`);
       event.target.value = "";
       return;
     }
     if (!files.length) return;
+    setUploadedFiles(files);
     setPreviews(current => {
       current.forEach(preview => URL.revokeObjectURL(preview.url));
       return files.map((file, fileIndex) => ({
@@ -171,44 +186,60 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
     });
   }
 
-  async function save(formData: FormData) {
+  async function save(_formData: FormData) {
+    const receipt = activeEntry;
+    if (!receipt) return;
+    if (receipt.documentType === "CARD_STATEMENT") {
+      removeEntry(receipt.fileIndex);
+      setSaveError("");
+      setStatus(`${receipt.fileName} wurde nicht als Ausgabe übernommen.`);
+      return;
+    }
+    if (!receipt.expenseDate || receipt.description.trim().length < 2 || !(Number(receipt.amount) > 0)) {
+      const missing = [
+        !receipt.expenseDate ? "Datum" : "",
+        receipt.description.trim().length < 2 ? "Beschreibung" : "",
+        !(Number(receipt.amount) > 0) ? "Gesamtbetrag" : ""
+      ].filter(Boolean).join(", ");
+      setSaveError(`Bitte ${missing} prüfen bzw. ergänzen.`);
+      setStatus(`${receipt.fileName} ist noch unvollständig.`);
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
-      const selectedFiles = formData.getAll("files");
-      for (const [receiptIndex, receipt] of receipts.entries()) {
-        const file = selectedFiles[receipt.fileIndex];
-        if (!(file instanceof File)) throw new Error(`Die Datei ${receipt.fileName} ist nicht mehr verfügbar.`);
-        setStatus(`${receiptIndex + 1} von ${receipts.length}: ${receipt.fileName} wird gespeichert …`);
-        const singleReceipt = new FormData();
-        singleReceipt.set("files", file);
-        singleReceipt.set("entries", JSON.stringify([{ ...receipt, fileIndex: 0, vatAmount: receipt.vatAmount || "0" }]));
-        await action(singleReceipt);
-        setEntries(current => current.filter(entry => entry.fileIndex !== receipt.fileIndex));
-      }
-      setModalOpen(false);
+      const file = uploadedFiles[receipt.fileIndex];
+      if (!(file instanceof File)) throw new Error(`Die Datei ${receipt.fileName} ist nicht mehr verfügbar.`);
+      setStatus(`${receipt.fileName} wird gespeichert …`);
+      const singleReceipt = new FormData();
+      singleReceipt.set("files", file);
+      singleReceipt.set("entries", JSON.stringify([{ ...receipt, fileIndex: 0, vatAmount: receipt.vatAmount || "0" }]));
+      const response = await fetch(saveUrl, { method: "POST", body: singleReceipt });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || `${receipt.fileName} konnte nicht gespeichert werden.`);
+      const remainingEntries = entries.filter(entry => entry.fileIndex !== receipt.fileIndex);
+      setEntries(remainingEntries);
+      setActiveIndex(index => Math.min(index, Math.max(0, remainingEntries.length - 1)));
       setPreviews(current => {
-        current.forEach(preview => URL.revokeObjectURL(preview.url));
-        return [];
+        const savedPreview = current.find(preview => preview.fileIndex === receipt.fileIndex);
+        if (savedPreview) URL.revokeObjectURL(savedPreview.url);
+        return current.filter(preview => preview.fileIndex !== receipt.fileIndex);
       });
-      setStatus(`${receipts.length} Beleg${receipts.length === 1 ? "" : "e"} wurden gespeichert.`);
-      setUploadKey(key => key + 1);
+      setStatus(`${receipt.fileName} wurde gespeichert.${remainingEntries.length || analyzing ? " Nächster Beleg wird geöffnet." : ""}`);
       router.refresh();
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Belege konnten nicht gespeichert werden.");
+      const message = error instanceof Error ? error.message : "Belege konnten nicht gespeichert werden.";
+      setSaveError(message);
+      setStatus(`Speichern abgebrochen: ${message}`);
     } finally {
       setSaving(false);
     }
   }
 
-  const receipts = entries.filter(entry => entry.documentType === "RECEIPT");
-  const canSave = receipts.length > 0 && receipts.every(entry =>
-    entry.expenseDate && entry.description.trim().length >= 2 && Number(entry.amount) > 0
-  );
   const activeEntry = entries[activeIndex];
   const activePreview = activeEntry
     ? previews.find(preview => preview.fileIndex === activeEntry.fileIndex)
-    : previews[0];
+    : undefined;
 
   return (
     <form action={save} className="expense-entry-form">
@@ -238,7 +269,7 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
         <div className="receipt-review-modal-card">
           <div className="receipt-review-modal-header">
             <div>
-              <strong>Belege prüfen</strong>
+              <strong>Beleg prüfen</strong>
               <div className="small">{status}</div>
             </div>
             <button className="secondary" disabled={analyzing || saving} onClick={() => setModalOpen(false)} type="button">Schließen</button>
@@ -277,7 +308,6 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
                   </div>
                   <div className="row">
                     <div><label>Gesamtbetrag</label><input min="0.01" required step=".01" type="number" value={activeEntry.amount} onChange={event => updateEntry(activeEntry.fileIndex, { amount: event.target.value })} /></div>
-                    <div><label>enthaltene MwSt.</label><input min="0" placeholder="Bitte prüfen" step=".01" type="number" value={activeEntry.vatAmount} onChange={event => updateEntry(activeEntry.fileIndex, { vatAmount: event.target.value })} /></div>
                   </div>
                   <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as Entry["paymentType"] })}>
                     <option value="PRIVATE">Privat ausgelegt</option><option value="COMPANY_CARD">Firmenkarte</option><option value="CASH">Bar</option>
@@ -288,16 +318,11 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
           </div>
 
           <div className="receipt-review-modal-footer">
-            <div className="actions">
-              <button className="secondary" disabled={activeIndex === 0} onClick={() => setActiveIndex(index => index - 1)} type="button">Zurück</button>
-              <button className="secondary" disabled={activeIndex >= entries.length - 1} onClick={() => setActiveIndex(index => index + 1)} type="button">Weiter</button>
-              <span className="small">{entries.length ? `${activeIndex + 1} von ${entries.length}` : "Analyse läuft"}</span>
-            </div>
+            <span className="small">{activeEntry ? `${Math.max(0, entries.length - 1)} weitere erkannte Belege warten` : "Der nächste Beleg wird erkannt …"}</span>
             <div>
               {saveError && <div className="error">{saveError}</div>}
-              <input name="entries" type="hidden" value={JSON.stringify(receipts.map(entry => ({ ...entry, vatAmount: entry.vatAmount || "0" })))} />
-              <button disabled={analyzing || saving || !canSave}>
-                {saving ? "Wird gespeichert …" : receipts.length === 1 ? "Geprüfte Ausgabe speichern" : `${receipts.length} geprüfte Ausgaben speichern`}
+              <button disabled={saving || !activeEntry}>
+                {saving ? "Wird gespeichert …" : activeEntry?.documentType === "CARD_STATEMENT" ? "Nicht übernehmen und nächsten öffnen" : "Beleg speichern und nächsten öffnen"}
               </button>
             </div>
           </div>

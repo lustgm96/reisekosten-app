@@ -22,8 +22,19 @@ export class ReceiptFileError extends Error {
   }
 }
 
+function isFileUpload(value: unknown): value is File {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<File>;
+  return (
+    typeof candidate.name === "string" &&
+    typeof candidate.type === "string" &&
+    typeof candidate.size === "number" &&
+    typeof candidate.arrayBuffer === "function"
+  );
+}
+
 export function validateReceiptFile(file: unknown): asserts file is File {
-  if (!(file instanceof File) || !file.size) {
+  if (!isFileUpload(file) || !file.size) {
     throw new ReceiptFileError("Bitte einen Beleg auswählen.", 400);
   }
 

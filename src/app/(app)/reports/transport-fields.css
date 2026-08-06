@@ -1,0 +1,22 @@
+.transport-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transport-option {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 11px;
+}
+
+.transport-option:has(input:checked) {
+  background: #eef2ff;
+  border-color: var(--brand);
+  color: #3730a3;
+}

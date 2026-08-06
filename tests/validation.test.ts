@@ -39,6 +39,12 @@ test("verhindert negative Kilometer", () => {
   assert.equal(result.success, false);
 });
 
+test("akzeptiert mehrere Verkehrsmittel und lehnt eine leere Auswahl ab", () => {
+  const multiple = JSON.stringify({ types: ["Firmenwagen", "Flug", "Mietwagen"], notes: "Mietwagen vor Ort" });
+  assert.equal(reportSchema.safeParse({ ...validReport, transportType: multiple }).success, true);
+  assert.equal(reportSchema.safeParse({ ...validReport, transportType: '{"types":[],"notes":""}' }).success, false);
+});
+
 test("akzeptiert nur positive Ausgabenbeträge", () => {
   const baseExpense = {
     amount: 12.5,

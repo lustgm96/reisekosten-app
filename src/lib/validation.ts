@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isSupportedCountryCode } from "./per-diem.ts";
+import { isValidTransportSelection } from "./transport.ts";
 
 export const reportSchema = z.object({
   title: z.string().trim().min(2).max(120),
@@ -9,7 +10,7 @@ export const reportSchema = z.object({
   accommodationMode: z.enum(["ACTUAL", "PER_DIEM", "PROVIDED"]).default("ACTUAL"),
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),
-  transportType: z.string().trim().min(2).max(80),
+  transportType: z.string().trim().min(2).max(1000).refine(isValidTransportSelection, "Bitte mindestens ein Verkehrsmittel auswählen"),
   privateKilometers: z.coerce.number().min(0).max(100000).default(0),
   breakfasts: z.coerce.number().int().min(0).max(100).default(0),
   lunches: z.coerce.number().int().min(0).max(100).default(0),

@@ -49,7 +49,10 @@ export default async function EditExpense({
       throw new Error("Nicht erlaubt");
     }
 
-    const values = expenseSchema.parse(Object.fromEntries(formData));
+    const values = expenseSchema.parse({
+      ...Object.fromEntries(formData),
+      vatAmount: current.vatAmount
+    });
     if (current.report.accommodationMode === "PER_DIEM" && values.category === "Hotel") {
       throw new Error("Bei Übernachtungspauschale kann kein Hotelbeleg erfasst werden.");
     }
@@ -85,26 +88,15 @@ export default async function EditExpense({
             </div>
           </div>
           <CategoryDescriptionFields defaultCategory={expense.category} defaultDescription={expense.description} />
-          <div className="row">
-            <div>
-              <label>Betrag</label>
-              <input
-                name="amount"
-                type="number"
-                step=".01"
-                defaultValue={expense.amount.toString()}
-                required
-              />
-            </div>
-            <div>
-              <label>enthaltene MwSt.</label>
-              <input
-                name="vatAmount"
-                type="number"
-                step=".01"
-                defaultValue={expense.vatAmount.toString()}
-              />
-            </div>
+          <div>
+            <label>Betrag</label>
+            <input
+              name="amount"
+              type="number"
+              step=".01"
+              defaultValue={expense.amount.toString()}
+              required
+            />
           </div>
           <div>
             <label>Zahlungsart</label>

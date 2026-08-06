@@ -68,6 +68,8 @@ model ExpenseReport {
   breakfasts        Int          @default(0)
   lunches           Int          @default(0)
   dinners           Int          @default(0)
+  providedMealsJson String       @default("[]")
+  mealsReviewedAt   DateTime?
   status            ReportStatus @default(DRAFT)
   submittedAt       DateTime?
   approvedAt        DateTime?
