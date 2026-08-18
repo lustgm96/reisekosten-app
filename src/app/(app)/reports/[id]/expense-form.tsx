@@ -24,6 +24,8 @@ const today = () => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
+const analysisTimeoutMs = 45_000;
+
 export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) {
   const [expenseDate, setExpenseDate] = useState(today);
   const [category, setCategory] = useState("Sonstiges");
@@ -41,9 +43,15 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
     const formData = new FormData();
     formData.set("reportId", reportId);
     formData.set("file", file);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), analysisTimeoutMs);
 
     try {
-      const response = await fetch(analyzeUrl, { method: "POST", body: formData });
+      const response = await fetch(analyzeUrl, {
+        method: "POST",
+        body: formData,
+        signal: controller.signal
+      });
       const result = await response.json() as Suggestion & { error?: string };
       if (!response.ok) throw new Error(result.error || "Belegerkennung fehlgeschlagen.");
 
@@ -55,8 +63,15 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
       setWarnings(result.warnings);
       setStatus(`Vorschläge übernommen · Erkennung ${result.confidence} %`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Belegerkennung fehlgeschlagen.");
+      const message =
+        error instanceof DOMException && error.name === "AbortError"
+          ? "Die lokale Belegerkennung dauert zu lange. Bitte Angaben manuell erfassen oder einen kleineren Beleg hochladen."
+          : error instanceof Error
+            ? error.message
+            : "Belegerkennung fehlgeschlagen.";
+      setStatus(message);
     } finally {
+      window.clearTimeout(timeout);
       setAnalyzing(false);
     }
   }
@@ -64,6 +79,7 @@ export function ExpenseForm({ action, analyzeUrl, reportId }: ExpenseFormProps) 
   function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file) void analyze(file);
+    event.target.value = "";
   }
 
   return (

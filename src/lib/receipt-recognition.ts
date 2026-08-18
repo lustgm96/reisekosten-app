@@ -1,3 +1,4 @@
+import path from "node:path";
 import { createWorker, OEM, PSM, type Worker } from "tesseract.js";
 import german from "@tesseract.js-data/deu";
 
@@ -13,14 +14,23 @@ export type ReceiptSuggestion = {
 
 let workerPromise: Promise<Worker> | null = null;
 let recognitionQueue = Promise.resolve();
+const OCR_PAGE_TIMEOUT_MS = 20_000;
+const WORKER_TERMINATE_TIMEOUT_MS = 5_000;
+const workerPath = path.join(
+  process.cwd(),
+  "node_modules/tesseract.js/src/worker-script/node/index.js"
+);
+const corePath = path.join(process.cwd(), "node_modules/tesseract.js-core");
 
 function getWorker() {
   if (workerPromise) return workerPromise;
 
   const pendingWorker = createWorker(german.code, OEM.LSTM_ONLY, {
     cacheMethod: "none",
+    corePath,
     gzip: german.gzip,
-    langPath: german.langPath
+    langPath: german.langPath,
+    workerPath
   }).then(async worker => {
     await worker.setParameters({
       preserve_interword_spaces: "1",
@@ -38,7 +48,11 @@ function getWorker() {
 async function discardWorker(worker: Worker) {
   workerPromise = null;
   try {
-    await worker.terminate();
+    await withTimeout(
+      worker.terminate(),
+      WORKER_TERMINATE_TIMEOUT_MS,
+      "OCR-Worker konnte nicht rechtzeitig beendet werden."
+    );
   } catch {
     // Der ursprüngliche OCR-Fehler ist für den Aufrufer relevanter.
   }
@@ -48,6 +62,14 @@ export async function terminateReceiptWorker() {
   const worker = await workerPromise?.catch(() => null);
   workerPromise = null;
   if (worker) await worker.terminate();
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  let timeout: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
 }
 
 function parseMoney(value: string) {
@@ -173,7 +195,11 @@ export function recognizeReceiptPages(images: Buffer[]) {
     try {
       const results = [];
       for (const page of images) {
-        results.push(await worker.recognize(page));
+        results.push(await withTimeout(
+          worker.recognize(page),
+          OCR_PAGE_TIMEOUT_MS,
+          "Die lokale Belegerkennung dauert zu lange."
+        ));
       }
       const text = results.map(result => result.data.text).join("\n");
       const confidence =
