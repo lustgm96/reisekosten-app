@@ -33,6 +33,11 @@ enum AccommodationMode {
   PROVIDED
 }
 
+enum ReceiptType {
+  UPLOADED
+  SELF_DECLARATION
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -43,8 +48,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  reports  ExpenseReport[]
-  comments ReviewComment[]
+  reports        ExpenseReport[]
+  comments       ReviewComment[]
+  cardStatements CardStatement[]
 }
 
 model ExpenseReport {
@@ -124,4 +130,57 @@ model ReviewComment {
 model AppSetting {
   id    String @id
   value String
+}
+
+model CardStatement {
+  id               String   @id @default(cuid())
+  employeeId       String
+  employee         User     @relation(fields: [employeeId], references: [id])
+  year             Int
+  month            Int
+  originalFileName String?
+  storedFileName   String?
+  mimeType         String?
+  isComplete       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items CardStatementItem[]
+
+  @@unique([employeeId, year, month])
+}
+
+model CardStatementItem {
+  id                      String          @id @default(cuid())
+  statementId             String
+  statement               CardStatement   @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  transactionDate         DateTime
+  description             String
+  category                String
+  amount                  Decimal
+  vatAmount               Decimal         @default(0)
+  receiptType             ReceiptType     @default(UPLOADED)
+  receiptOriginalFileName String?
+  receiptStoredFileName   String?
+  receiptMimeType         String?
+  selfDeclaration         SelfDeclaration?
+  createdAt               DateTime        @default(now())
+
+  @@index([statementId, transactionDate])
+}
+
+model SelfDeclaration {
+  id                     String            @id @default(cuid())
+  itemId                 String            @unique
+  item                   CardStatementItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  payeeName              String
+  payeeAddress           String
+  businessContext        String
+  proofReference         String?
+  issuedAt               DateTime          @default(now())
+  declarantName          String
+  signatureStoredFileName String
+  signatureMimeType      String            @default("image/png")
+  confirmedAt            DateTime
+  generatedPdfFileName   String?
 }

@@ -190,7 +190,7 @@ function detectDescription(lines: string[]) {
   );
 }
 
-function detectCategory(text: string) {
+export function detectCategory(text: string) {
   const categories: Array<[RegExp, string]> = [
     [/(hotel|pension|übernachtung|zimmer|bed and breakfast)/i, "Hotel"],
     [/(parkhaus|parken|parking|parkgebühr)/i, "Parken"],
@@ -241,8 +241,88 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
   };
 }
 
+export type CardStatementItemSuggestion = {
+  transactionDate: string | null;
+  description: string;
+  amount: number;
+};
+
+const CARD_STATEMENT_NOISE = /(kreditkartenabrechnung|abrechnung business card|abrechnungssaldo|umsatzdatum|buchungsdatum|verf[üu]gungsrahmen|summe|gesamt|saldo|übertrag|seite \d|kartennummer|gültig bis|iban|bic)/i;
+
+export function extractCardStatementItems(text: string): CardStatementItemSuggestion[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const items: CardStatementItemSuggestion[] = [];
+  for (const line of lines) {
+    if (CARD_STATEMENT_NOISE.test(line)) continue;
+    const amounts = moneyValues(line);
+    if (!amounts.length) continue;
+    const amount = amounts[amounts.length - 1];
+    if (amount <= 0) continue;
+
+    const dateMatch = line.match(/\b([0-3]?\d)\s*[.,/-]\s*([01]?\d)\s*[.,/-]\s*(20\d{2}|\d{2})\b/);
+    let transactionDate: string | null = null;
+    if (dateMatch) {
+      const year = Number(dateMatch[3]) < 100 ? 2000 + Number(dateMatch[3]) : Number(dateMatch[3]);
+      const month = Number(dateMatch[2]);
+      const day = Number(dateMatch[1]);
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
+        transactionDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      }
+    }
+
+    const description = line
+      .replace(dateMatch ? dateMatch[0] : "", "")
+      .replace(/(?:€\s*|EUR\s*)?\d{1,5}(?:[.,\s]\d{3})*[,.]\d{2}\s*(?:€|EUR)?/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (description.length < 2) continue;
+    items.push({ transactionDate, description, amount });
+  }
+  return items;
+}
+
 export function recognizeReceipt(image: Buffer) {
   return recognizeReceiptPages([image]);
+}
+
+export function recognizeCardStatementPages(images: Buffer[]) {
+  if (!images.length) throw new Error("Keine Seiten vorhanden.");
+
+  const job = recognitionQueue.then(async () => {
+    const worker = await getWorker();
+    try {
+      const texts: string[] = [];
+      for (const page of images) {
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+          const result = await Promise.race([
+            worker.recognize(page),
+            new Promise<never>((_, reject) => {
+              timeout = setTimeout(
+                () => reject(new Error("Zeitlimit der lokalen Belegerkennung überschritten.")),
+                OCR_PAGE_TIMEOUT_MS
+              );
+            })
+          ]);
+          texts.push(result.data.text);
+        } finally {
+          if (timeout) clearTimeout(timeout);
+        }
+      }
+      return extractCardStatementItems(texts.join("\n"));
+    } catch (error) {
+      await discardWorker(worker);
+      throw error;
+    }
+  });
+  recognitionQueue = job.then(() => undefined, () => undefined);
+  return job;
 }
 
 export function recognizeReceiptPages(

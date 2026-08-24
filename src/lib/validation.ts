@@ -45,3 +45,18 @@ export const userSchema = z.object({
 export const passwordSchema = z.object({
   password: z.string().min(8).max(100)
 });
+
+export const cardStatementItemSchema = z.object({
+  transactionDate: z.coerce.date(),
+  category: z.string().trim().min(2).max(80),
+  description: z.string().trim().min(2).max(240),
+  amount: z.coerce.number().positive().max(100000)
+});
+
+export const selfDeclarationSchema = z.object({
+  payeeName: z.string().trim().min(2).max(160),
+  payeeAddress: z.string().trim().min(2).max(300),
+  businessContext: z.string().trim().min(3).max(500),
+  proofReference: z.string().trim().max(200).optional().or(z.literal("")),
+  declarantName: z.string().trim().min(2).max(120)
+});
