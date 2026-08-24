@@ -7,6 +7,7 @@ import { receiptDocumentTitle } from "@/lib/process-number";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { formatTransportSelection } from "@/lib/transport";
 import { formatCurrencyAmount, toEur } from "@/lib/currency";
+import { readStoredFile } from "@/lib/storage";
 
 type PdfExpense = {
   amount: number | Prisma.Decimal;
@@ -40,7 +41,7 @@ export type ReportPdfData = {
   completedAt: Date | null;
   destination: string;
   dinners: number;
-  employee: { name: string };
+  employee: { name: string; signatureStoredFileName?: string | null; signatureMimeType?: string | null };
   endAt: Date;
   expenses: PdfExpense[];
   id: string;
@@ -327,6 +328,36 @@ export async function createReportPdf(
     y -= 21;
   });
   y -= 8;
+
+  sectionTitle("Bestätigung des Mitarbeiters");
+  if (report.employee.signatureStoredFileName) {
+    const signatureBytes = await readStoredFile(report.employee.signatureStoredFileName);
+    const signatureImage = report.employee.signatureMimeType === "image/jpeg"
+      ? await pdf.embedJpg(signatureBytes)
+      : await pdf.embedPng(signatureBytes);
+    const signatureHeight = 46;
+    const signatureWidth = (signatureImage.width / signatureImage.height) * signatureHeight;
+    ensureSpace(signatureHeight + 22);
+    page.drawImage(signatureImage, { x: MARGIN, y: y - signatureHeight, width: signatureWidth, height: signatureHeight });
+    page.drawText(`${report.employee.name}, ${date.format(new Date())}`, {
+      x: MARGIN,
+      y: y - signatureHeight - 12,
+      size: 8,
+      font: regular,
+      color: MUTED
+    });
+    y -= signatureHeight + 26;
+  } else {
+    ensureSpace(24);
+    page.drawText("Keine Unterschrift im Mitarbeiterprofil hinterlegt.", {
+      x: MARGIN,
+      y: y - 8,
+      size: 9,
+      font: regular,
+      color: MUTED
+    });
+    y -= 24;
+  }
 
   if (report.approvedAt) {
     sectionTitle("Freigabe");

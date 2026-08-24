@@ -199,6 +199,22 @@ export default async function UsersPage({
                 </div>
                 <button className="secondary">Passwort setzen</button>
               </form>
+
+              {(user.department || user.employeeNumber || user.phone || user.street || user.iban) && (
+                <div className="user-profile-info">
+                  <span className="small">Vom Mitarbeiter im eigenen Profil hinterlegt:</span>
+                  <div className="row3">
+                    {user.department && <div><span className="small">Abteilung</span><div>{user.department}</div></div>}
+                    {user.employeeNumber && <div><span className="small">Personalnummer</span><div>{user.employeeNumber}</div></div>}
+                    {user.phone && <div><span className="small">Telefon</span><div>{user.phone}</div></div>}
+                    {(user.street || user.postalCode || user.city) && (
+                      <div><span className="small">Adresse</span><div>{[user.street, [user.postalCode, user.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}</div></div>
+                    )}
+                    {user.iban && <div><span className="small">IBAN</span><div>{user.iban}</div></div>}
+                    {user.bic && <div><span className="small">BIC</span><div>{user.bic}</div></div>}
+                  </div>
+                </div>
+              )}
             </section>
           );
         })}

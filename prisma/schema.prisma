@@ -48,6 +48,21 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  employeeNumber String?
+  department     String?
+  phone          String?
+  dateOfBirth    DateTime?
+  street         String?
+  postalCode     String?
+  city           String?
+
+  iban          String?
+  bic           String?
+  accountHolder String?
+
+  signatureStoredFileName String?
+  signatureMimeType       String?
+
   reports        ExpenseReport[]
   comments       ReviewComment[]
   cardStatements CardStatement[]

@@ -61,6 +61,28 @@ export const passwordSchema = z.object({
   password: z.string().min(8).max(100)
 });
 
+const ibanRegex = /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/;
+const bicRegex = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+
+const normalizedBankField = (regex: RegExp, message: string) =>
+  z.string().trim().transform(v => v.replace(/\s+/g, "").toUpperCase())
+    .refine(v => v === "" || regex.test(v), message)
+    .optional()
+    .or(z.literal(""));
+
+export const userProfileSchema = z.object({
+  employeeNumber: z.string().trim().max(40).optional().or(z.literal("")),
+  department: z.string().trim().max(120).optional().or(z.literal("")),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  dateOfBirth: z.string().trim().max(10).optional().or(z.literal("")),
+  street: z.string().trim().max(160).optional().or(z.literal("")),
+  postalCode: z.string().trim().max(20).optional().or(z.literal("")),
+  city: z.string().trim().max(120).optional().or(z.literal("")),
+  iban: normalizedBankField(ibanRegex, "Ungültige IBAN"),
+  bic: normalizedBankField(bicRegex, "Ungültige BIC"),
+  accountHolder: z.string().trim().max(120).optional().or(z.literal(""))
+});
+
 export const cardStatementItemSchema = z.object({
   transactionDate: z.coerce.date(),
   category: z.string().trim().min(2).max(80),

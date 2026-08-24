@@ -1,0 +1,13 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "accountHolder" TEXT;
+ALTER TABLE "User" ADD COLUMN "bic" TEXT;
+ALTER TABLE "User" ADD COLUMN "city" TEXT;
+ALTER TABLE "User" ADD COLUMN "dateOfBirth" DATETIME;
+ALTER TABLE "User" ADD COLUMN "department" TEXT;
+ALTER TABLE "User" ADD COLUMN "employeeNumber" TEXT;
+ALTER TABLE "User" ADD COLUMN "iban" TEXT;
+ALTER TABLE "User" ADD COLUMN "phone" TEXT;
+ALTER TABLE "User" ADD COLUMN "postalCode" TEXT;
+ALTER TABLE "User" ADD COLUMN "signatureMimeType" TEXT;
+ALTER TABLE "User" ADD COLUMN "signatureStoredFileName" TEXT;
+ALTER TABLE "User" ADD COLUMN "street" TEXT;

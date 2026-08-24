@@ -19,6 +19,7 @@ export function Navigation({ role }: NavigationProps) {
     { href: "/card-statements", label: "Kartenabrechnung" },
     { href: "/allowances", label: "Pauschalen" },
     { href: "/archive", label: "Archiv" },
+    { href: "/profile", label: "Mein Profil" },
     ...(role !== "EMPLOYEE" ? [{ href: "/review", label: "Prüfung" }] : []),
     ...(role === "ADMIN"
       ? [
