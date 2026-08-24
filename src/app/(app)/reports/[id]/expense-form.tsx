@@ -10,6 +10,7 @@ import {
   type ReceiptEntry,
   type ReceiptSuggestion
 } from "@/lib/receipt-entry";
+import { currencyOptions } from "@/lib/currency";
 import "./expense-form.css";
 
 type Preview = { fileIndex: number; mimeType: string; url: string };
@@ -261,7 +262,16 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
                   </div>
                   <div className="row">
                     <div><label>Gesamtbetrag</label><input min="0.01" required step=".01" type="number" value={activeEntry.amount} onChange={event => updateEntry(activeEntry.fileIndex, { amount: event.target.value })} /></div>
+                    <div><label>Währung</label><select value={activeEntry.currency} onChange={event => updateEntry(activeEntry.fileIndex, { currency: event.target.value, exchangeRate: event.target.value === "EUR" ? "1" : activeEntry.exchangeRate })}>
+                      {currencyOptions.map(option => <option key={option.code} value={option.code}>{option.label}</option>)}
+                    </select></div>
+                    {activeEntry.currency !== "EUR" && (
+                      <div><label>Wechselkurs zu EUR</label><input min="0.0001" required step=".0001" type="number" value={activeEntry.exchangeRate} onChange={event => updateEntry(activeEntry.fileIndex, { exchangeRate: event.target.value })} /></div>
+                    )}
                   </div>
+                  {activeEntry.currency !== "EUR" && Number(activeEntry.amount) > 0 && Number(activeEntry.exchangeRate) > 0 && (
+                    <div className="small">≈ {(Number(activeEntry.amount) * Number(activeEntry.exchangeRate)).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</div>
+                  )}
                   <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as ReceiptEntry["paymentType"] })}>
                     <option value="PRIVATE">Privat ausgelegt</option><option value="COMPANY_CARD">Firmenkarte</option><option value="CASH">Bar</option>
                   </select></div>

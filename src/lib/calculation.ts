@@ -1,5 +1,6 @@
 import type { ExpenseItem, ExpenseReport, PaymentType } from "@prisma/client";
 import type { PerDiemRate } from "./per-diem";
+import { toEur } from "./currency.ts";
 
 export type NumericSettings = {
   breakfastDeduction: number;
@@ -25,6 +26,7 @@ type CalculationReport = Pick<
 
 type CalculationExpense = {
   amount: ExpenseItem["amount"] | number;
+  exchangeRate?: ExpenseItem["exchangeRate"] | number;
   paymentType: PaymentType;
 };
 
@@ -75,7 +77,7 @@ export function calculateReport(
     roundMoney(
       expenses
         .filter(expense => expense.paymentType === type)
-        .reduce((total, expense) => total + Number(expense.amount), 0)
+        .reduce((total, expense) => total + toEur(expense.amount, expense.exchangeRate ?? 1), 0)
     );
 
   const privateExpenses = sum("PRIVATE");

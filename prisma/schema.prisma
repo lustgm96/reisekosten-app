@@ -97,6 +97,8 @@ model ExpenseItem {
   category         String
   description      String
   amount           Decimal
+  currency         String        @default("EUR")
+  exchangeRate     Decimal       @default(1)
   vatAmount        Decimal       @default(0)
   paymentType      PaymentType
   originalFileName String?

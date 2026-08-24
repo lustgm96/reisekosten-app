@@ -97,6 +97,19 @@ test("rundet Kilometer und Ausgaben auf Cent", () => {
   assert.equal(result.totalCosts, 48.21);
 });
 
+test("rechnet Ausgaben in Fremdwährung mit dem hinterlegten Kurs in Euro um", () => {
+  const result = calculateReport(
+    report({ privateKilometers: 0 }),
+    [
+      { amount: 100, exchangeRate: 0.92, paymentType: "PRIVATE" },
+      { amount: 20, paymentType: "CASH" }
+    ],
+    settings
+  );
+  assert.equal(result.privateExpenses, 92);
+  assert.equal(result.cashExpenses, 20);
+});
+
 test("zählt Kalendertage unabhängig von Sommerzeitlängen", () => {
   const result = calculateReport(
     report({

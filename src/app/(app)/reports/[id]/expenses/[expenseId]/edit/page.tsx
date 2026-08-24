@@ -7,6 +7,7 @@ import { withBasePath } from "@/lib/paths";
 import { CategoryDescriptionFields } from "./category-description-fields";
 import { dateInputValue } from "@/lib/date-input";
 import { canEmployeeEditReport } from "@/lib/report-editing";
+import { currencyOptions } from "@/lib/currency";
 
 export default async function EditExpense({
   params
@@ -76,15 +77,36 @@ export default async function EditExpense({
             </div>
           </div>
           <CategoryDescriptionFields defaultCategory={expense.category} defaultDescription={expense.description} />
-          <div>
-            <label>Betrag</label>
-            <input
-              name="amount"
-              type="number"
-              step=".01"
-              defaultValue={expense.amount.toString()}
-              required
-            />
+          <div className="row">
+            <div>
+              <label>Betrag</label>
+              <input
+                name="amount"
+                type="number"
+                step=".01"
+                defaultValue={expense.amount.toString()}
+                required
+              />
+            </div>
+            <div>
+              <label>Währung</label>
+              <select name="currency" defaultValue={expense.currency}>
+                {currencyOptions.map(option => (
+                  <option key={option.code} value={option.code}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Wechselkurs zu EUR</label>
+              <input
+                name="exchangeRate"
+                type="number"
+                step=".0001"
+                min="0.0001"
+                defaultValue={expense.exchangeRate.toString()}
+                required
+              />
+            </div>
           </div>
           <div>
             <label>Zahlungsart</label>

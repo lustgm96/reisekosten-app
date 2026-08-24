@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isSupportedCountryCode } from "./per-diem.ts";
 import { isValidTransportSelection } from "./transport.ts";
+import { isValidCurrencyCode } from "./currency.ts";
 
 export const reportSchema = z.object({
   title: z.string().trim().min(2).max(120),
@@ -25,6 +26,8 @@ export const expenseSchema = z.object({
   category: z.string().trim().min(2).max(80),
   description: z.string().trim().min(2).max(240),
   amount: z.coerce.number().positive().max(100000),
+  currency: z.string().trim().toUpperCase().refine(isValidCurrencyCode, "Ungültiger Währungscode").default("EUR"),
+  exchangeRate: z.coerce.number().positive().max(1000).default(1),
   vatAmount: z.coerce.number().min(0).max(100000).default(0),
   paymentType: z.enum(["PRIVATE", "COMPANY_CARD", "CASH"])
 });

@@ -13,8 +13,10 @@ export type ReceiptEntry = {
   amount: string;
   category: string;
   confidence: number;
+  currency: string;
   description: string;
   documentType: ReceiptSuggestion["documentType"];
+  exchangeRate: string;
   expenseDate: string;
   fileIndex: number;
   fileName: string;
@@ -33,6 +35,8 @@ export function entryFromSuggestion(file: File, fileIndex: number, suggestion: R
     category: suggestion.category || "Sonstiges",
     description: suggestion.description === "Beleg" ? "" : suggestion.description,
     amount: suggestion.amount === null ? "" : suggestion.amount.toFixed(2),
+    currency: "EUR",
+    exchangeRate: "1",
     vatAmount: suggestion.vatAmount === null ? "" : suggestion.vatAmount.toFixed(2),
     paymentType: "PRIVATE",
     confidence: suggestion.confidence,
@@ -49,6 +53,8 @@ export function failedReceiptEntry(file: File, fileIndex: number, warning: strin
     category: "Sonstiges",
     description: "",
     amount: "",
+    currency: "EUR",
+    exchangeRate: "1",
     vatAmount: "",
     paymentType: "PRIVATE",
     confidence: 0,
@@ -61,6 +67,7 @@ export function missingReceiptFields(entry: ReceiptEntry) {
   return [
     !entry.expenseDate ? "Datum" : "",
     entry.description.trim().length < 2 ? "Beschreibung" : "",
-    !(Number(entry.amount) > 0) ? "Gesamtbetrag" : ""
+    !(Number(entry.amount) > 0) ? "Gesamtbetrag" : "",
+    !(Number(entry.exchangeRate) > 0) ? "Wechselkurs" : ""
   ].filter(Boolean);
 }

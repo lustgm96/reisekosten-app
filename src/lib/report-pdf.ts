@@ -6,9 +6,12 @@ import type { PerDiemRate } from "@/lib/per-diem";
 import { receiptDocumentTitle } from "@/lib/process-number";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { formatTransportSelection } from "@/lib/transport";
+import { formatCurrencyAmount, toEur } from "@/lib/currency";
 
 type PdfExpense = {
   amount: number | Prisma.Decimal;
+  currency?: string;
+  exchangeRate?: number | Prisma.Decimal;
   category: string;
   description: string;
   expenseDate: Date;
@@ -242,7 +245,11 @@ export async function createReportPdf(
   }
   for (const expense of report.expenses) {
     const documentTitle = receiptDocumentTitle(report.processNumber, expense.createdAt, report.expenses.indexOf(expense));
-    const description = wrapText(`${expense.description || "-"}\nMwSt.: ${eur.format(Number(expense.vatAmount))}\n${documentTitle}`, regular, 8.5, 263);
+    const currency = expense.currency || "EUR";
+    const originalAmountLine = currency !== "EUR"
+      ? `Original: ${formatCurrencyAmount(Number(expense.amount), currency)} · Kurs ${Number(expense.exchangeRate ?? 1).toFixed(4)}\n`
+      : "";
+    const description = wrapText(`${expense.description || "-"}\n${originalAmountLine}MwSt.: ${eur.format(Number(expense.vatAmount))}\n${documentTitle}`, regular, 8.5, 263);
     const rowHeight = Math.max(31, 27 + Math.max(0, description.length - 1) * 10);
     if (y - rowHeight < 52) {
       addPage();
@@ -255,7 +262,7 @@ export async function createReportPdf(
       page.drawText(line, { x: MARGIN + 75, y: y - 22 - index * 10, size: 8.5, font: regular, color: MUTED })
     );
     page.drawText(paymentLabels[expense.paymentType], { x: MARGIN + 350, y: y - 12, size: 8.5, font: regular, color: TEXT });
-    const amount = eur.format(Number(expense.amount));
+    const amount = eur.format(toEur(expense.amount, expense.exchangeRate ?? 1));
     page.drawText(amount, {
       x: PAGE_WIDTH - MARGIN - 7 - bold.widthOfTextAtSize(amount, 8.5),
       y: y - 12,
