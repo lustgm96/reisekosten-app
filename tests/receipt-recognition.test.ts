@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { extractReceiptSuggestion } from "../src/lib/receipt-recognition.ts";
+import { extractCardStatementItems, extractReceiptSuggestion } from "../src/lib/receipt-recognition.ts";
 
 test("erkennt die wichtigsten Angaben eines deutschen Belegs", () => {
   const result = extractReceiptSuggestion(`
@@ -85,4 +85,20 @@ test("erkennt englische Steuerangaben und bevorzugt den Steuerbetrag", () => {
   `);
   assert.equal(result.vatAmount, 44.96);
   assert.equal(result.amount, 378);
+});
+
+test("extrahiert Einzelpositionen aus einer Kreditkartenabrechnung", () => {
+  const items = extractCardStatementItems(`
+    Kreditkartenabrechnung Business Card Premium
+    Umsatzdatum Buchungsdatum Zahlungsempfänger Betrag/EUR
+    01.05.2026 02.05.2026 Shell Tankstelle Köln 65,20
+    03.05.2026 04.05.2026 Deutsche Bahn Ticket 89,00
+    Verfügungsrahmen 5000 EUR
+    Abrechnungssaldo vom 2.5.2026 -1.758,58
+  `);
+  assert.equal(items.length, 2);
+  assert.equal(items[0].transactionDate, "2026-05-01");
+  assert.equal(items[0].amount, 65.2);
+  assert.match(items[0].description, /Shell Tankstelle/);
+  assert.equal(items[1].amount, 89);
 });

@@ -16,6 +16,7 @@ export function Navigation({ role }: NavigationProps) {
   const items = [
     { href: "/", label: "Dashboard" },
     { href: "/reports/new", label: "Neue Abrechnung" },
+    { href: "/card-statements", label: "Kartenabrechnung" },
     { href: "/allowances", label: "Pauschalen" },
     { href: "/archive", label: "Archiv" },
     ...(role !== "EMPLOYEE" ? [{ href: "/review", label: "Prüfung" }] : []),

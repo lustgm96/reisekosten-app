@@ -135,14 +135,14 @@ export function StatementImportForm({ analyzeUrl, importUrl }: StatementImportFo
         </table>
       )}
 
-      {(items.length > 0 || file) && (
-        <div className="actions" style={{ marginTop: 10 }}>
-          <button disabled={analyzing} onClick={addBlankRow} type="button" className="secondary">Zeile hinzufügen</button>
-          <button disabled={saving || analyzing || !items.length} onClick={importItems} type="button">
+      <div className="actions" style={{ marginTop: 10 }}>
+        <button disabled={analyzing} onClick={addBlankRow} type="button" className="secondary">Position manuell hinzufügen</button>
+        {items.length > 0 && (
+          <button disabled={saving || analyzing} onClick={importItems} type="button">
             {saving ? "Wird übernommen …" : "Ausgewählte Positionen übernehmen"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
