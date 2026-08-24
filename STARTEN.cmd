@@ -22,7 +22,7 @@ call npx prisma generate
 if errorlevel 1 goto :error
 
 echo.
-echo App startet unter http://localhost:3000/Reisekosten/
+echo App startet unter http://localhost:3010/Reisekosten/
 echo.
 call npm run dev
 popd
