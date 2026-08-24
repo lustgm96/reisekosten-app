@@ -13,7 +13,8 @@ const nextConfig: NextConfig = {
     "@napi-rs/canvas",
     "@tesseract.js-data/deu",
     "pdfjs-dist",
-    "tesseract.js"
+    "tesseract.js",
+    "tesseract.js-core"
   ],
   trailingSlash: true
 };
