@@ -3,15 +3,17 @@
 type ConfirmDeleteButtonProps = {
   label?: string;
   message?: string;
+  className?: string;
 };
 
 export function ConfirmDeleteButton({
   label = "Löschen",
-  message = "Abrechnung einschließlich aller Ausgaben und Kommentare löschen?"
+  message = "Abrechnung einschließlich aller Ausgaben und Kommentare löschen?",
+  className = "danger"
 }: ConfirmDeleteButtonProps) {
   return (
     <button
-      className="danger"
+      className={className}
       onClick={event => {
         if (!window.confirm(message)) {
           event.preventDefault();
