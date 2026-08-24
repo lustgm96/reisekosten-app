@@ -76,7 +76,14 @@ export default async function EditExpense({
               />
             </div>
           </div>
-          <CategoryDescriptionFields defaultCategory={expense.category} defaultDescription={expense.description} />
+          <CategoryDescriptionFields
+            defaultCategory={expense.category}
+            defaultDescription={expense.description}
+            defaultNotes={expense.notes ?? ""}
+            defaultBewirtungKunde={expense.bewirtungKunde ?? ""}
+            defaultBewirtungTeilnehmer={expense.bewirtungTeilnehmer ?? ""}
+            defaultBewirtungAnlass={expense.bewirtungAnlass ?? ""}
+          />
           <div className="row">
             <div>
               <label>Betrag</label>

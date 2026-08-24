@@ -20,6 +20,10 @@ type PdfExpense = {
   mimeType: string | null;
   storedFileName: string | null;
   vatAmount: number | Prisma.Decimal;
+  notes?: string | null;
+  bewirtungKunde?: string | null;
+  bewirtungTeilnehmer?: string | null;
+  bewirtungAnlass?: string | null;
 };
 
 type PdfComment = {
@@ -249,7 +253,11 @@ export async function createReportPdf(
     const originalAmountLine = currency !== "EUR"
       ? `Original: ${formatCurrencyAmount(Number(expense.amount), currency)} · Kurs ${Number(expense.exchangeRate ?? 1).toFixed(4)}\n`
       : "";
-    const description = wrapText(`${expense.description || "-"}\n${originalAmountLine}MwSt.: ${eur.format(Number(expense.vatAmount))}\n${documentTitle}`, regular, 8.5, 263);
+    const bewirtungLine = expense.category === "Bewirtung"
+      ? `Kunde: ${expense.bewirtungKunde || "-"} · Teilnehmer: ${expense.bewirtungTeilnehmer || "-"} · Anlass: ${expense.bewirtungAnlass || "-"}\n`
+      : "";
+    const notesLine = expense.notes ? `Hinweis: ${expense.notes}\n` : "";
+    const description = wrapText(`${expense.description || "-"}\n${originalAmountLine}${bewirtungLine}${notesLine}MwSt.: ${eur.format(Number(expense.vatAmount))}\n${documentTitle}`, regular, 8.5, 263);
     const rowHeight = Math.max(31, 27 + Math.max(0, description.length - 1) * 10);
     if (y - rowHeight < 52) {
       addPage();

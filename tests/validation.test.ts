@@ -58,6 +58,24 @@ test("akzeptiert nur positive Ausgabenbeträge", () => {
   assert.equal(expenseSchema.safeParse({ ...baseExpense, amount: 0 }).success, false);
 });
 
+test("verlangt Kunde, Teilnehmer und Anlass bei Bewirtungsbelegen", () => {
+  const bewirtungExpense = {
+    amount: 45,
+    category: "Bewirtung",
+    description: "Geschäftsessen",
+    expenseDate: "2026-07-08",
+    paymentType: "PRIVATE",
+    vatAmount: 5
+  };
+  assert.equal(expenseSchema.safeParse(bewirtungExpense).success, false);
+  assert.equal(expenseSchema.safeParse({
+    ...bewirtungExpense,
+    bewirtungKunde: "Musterfirma GmbH",
+    bewirtungTeilnehmer: "Max Mustermann",
+    bewirtungAnlass: "Vertragsverhandlung"
+  }).success, true);
+});
+
 test("normalisiert E-Mail-Adressen und prüft Rollen", () => {
   const result = userSchema.parse({
     email: "  TEST@EXAMPLE.LOCAL ",

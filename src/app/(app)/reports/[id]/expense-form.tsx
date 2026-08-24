@@ -275,6 +275,15 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
                   <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as ReceiptEntry["paymentType"] })}>
                     <option value="PRIVATE">Privat ausgelegt</option><option value="COMPANY_CARD">Firmenkarte</option><option value="CASH">Bar</option>
                   </select></div>
+                  {activeEntry.category === "Bewirtung" && <div className="row">
+                    <div><label>Bewirteter Kunde</label><input placeholder="z. B. Musterfirma GmbH" required value={activeEntry.bewirtungKunde} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungKunde: event.target.value })} /></div>
+                    <div><label>Teilnehmende Personen</label><input placeholder="z. B. Max Mustermann, Erika Musterfrau" required value={activeEntry.bewirtungTeilnehmer} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungTeilnehmer: event.target.value })} /></div>
+                    <div><label>Anlass der Bewirtung</label><input placeholder="z. B. Vertragsverhandlung" required value={activeEntry.bewirtungAnlass} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungAnlass: event.target.value })} /></div>
+                  </div>}
+                  <div>
+                    <label>Kommentar / Hinweis</label>
+                    <textarea placeholder="Optionale Anmerkung zu diesem Beleg" rows={2} value={activeEntry.notes} onChange={event => updateEntry(activeEntry.fileIndex, { notes: event.target.value })} />
+                  </div>
                 </>}
               </>}
             </div>

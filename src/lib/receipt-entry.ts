@@ -23,6 +23,10 @@ export type ReceiptEntry = {
   paymentType: "PRIVATE" | "COMPANY_CARD" | "CASH";
   vatAmount: string;
   warnings: string[];
+  notes: string;
+  bewirtungKunde: string;
+  bewirtungTeilnehmer: string;
+  bewirtungAnlass: string;
 };
 
 export const expenseCategories = ["Hotel", "Bewirtung", "Parken", "Taxi", "Bahn", "Flug", "Tanken", "Sonstiges"] as const;
@@ -41,7 +45,11 @@ export function entryFromSuggestion(file: File, fileIndex: number, suggestion: R
     paymentType: "PRIVATE",
     confidence: suggestion.confidence,
     documentType: suggestion.documentType,
-    warnings: suggestion.warnings
+    warnings: suggestion.warnings,
+    notes: "",
+    bewirtungKunde: "",
+    bewirtungTeilnehmer: "",
+    bewirtungAnlass: ""
   };
 }
 
@@ -59,7 +67,11 @@ export function failedReceiptEntry(file: File, fileIndex: number, warning: strin
     paymentType: "PRIVATE",
     confidence: 0,
     documentType: "RECEIPT",
-    warnings: [warning]
+    warnings: [warning],
+    notes: "",
+    bewirtungKunde: "",
+    bewirtungTeilnehmer: "",
+    bewirtungAnlass: ""
   };
 }
 
@@ -68,6 +80,9 @@ export function missingReceiptFields(entry: ReceiptEntry) {
     !entry.expenseDate ? "Datum" : "",
     entry.description.trim().length < 2 ? "Beschreibung" : "",
     !(Number(entry.amount) > 0) ? "Gesamtbetrag" : "",
-    !(Number(entry.exchangeRate) > 0) ? "Wechselkurs" : ""
+    !(Number(entry.exchangeRate) > 0) ? "Wechselkurs" : "",
+    entry.category === "Bewirtung" && !entry.bewirtungKunde.trim() ? "Bewirteter Kunde" : "",
+    entry.category === "Bewirtung" && !entry.bewirtungTeilnehmer.trim() ? "Teilnehmende Personen" : "",
+    entry.category === "Bewirtung" && !entry.bewirtungAnlass.trim() ? "Anlass der Bewirtung" : ""
   ].filter(Boolean);
 }

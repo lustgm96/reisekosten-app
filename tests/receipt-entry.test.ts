@@ -35,3 +35,23 @@ test("nennt alle fehlenden Pflichtwerte eines Belegs", () => {
   });
   assert.deepEqual(missingReceiptFields(entry), ["Datum", "Beschreibung", "Gesamtbetrag"]);
 });
+
+test("verlangt Kunde, Teilnehmer und Anlass bei Bewirtungsbelegen", () => {
+  const file = new File(["receipt"], "essen.pdf", { type: "application/pdf" });
+  const entry = entryFromSuggestion(file, 0, {
+    amount: 45,
+    category: "Bewirtung",
+    confidence: 80,
+    description: "Geschäftsessen",
+    documentType: "RECEIPT",
+    expenseDate: "2026-08-05",
+    vatAmount: 5,
+    warnings: []
+  });
+
+  assert.deepEqual(missingReceiptFields(entry), ["Bewirteter Kunde", "Teilnehmende Personen", "Anlass der Bewirtung"]);
+  entry.bewirtungKunde = "Musterfirma GmbH";
+  entry.bewirtungTeilnehmer = "Max Mustermann";
+  entry.bewirtungAnlass = "Vertragsverhandlung";
+  assert.deepEqual(missingReceiptFields(entry), []);
+});

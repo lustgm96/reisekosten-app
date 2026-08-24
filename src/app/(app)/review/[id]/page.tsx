@@ -84,7 +84,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
       <table><thead><tr><th>Datum</th><th>Beschreibung</th><th>Zahlung</th><th>MwSt.</th><th>Betrag</th></tr></thead><tbody>
       {report.expenses.map(x=><tr key={x.id}>
         <td>{x.expenseDate.toLocaleDateString("de-DE")}</td>
-        <td>{x.description}{x.storedFileName&&<> · <a href={withBasePath(`/api/files/${x.id}`)}>Beleg</a></>}</td>
+        <td>{x.description}{x.storedFileName&&<> · <a href={withBasePath(`/api/files/${x.id}`)}>Beleg</a></>}{x.category==="Bewirtung"&&<div className="small">Kunde: {x.bewirtungKunde||"-"}<br/>Teilnehmer: {x.bewirtungTeilnehmer||"-"}<br/>Anlass: {x.bewirtungAnlass||"-"}</div>}{x.notes&&<div className="small">Hinweis: {x.notes}</div>}</td>
         <td>{x.paymentType}</td>
         <td><form action={updateVat} className="table-actions"><input name="expenseId" type="hidden" value={x.id}/><input aria-label={`MwSt. für ${x.description}`} min="0" max={x.amount.toString()} name="vatAmount" step=".01" style={{minWidth:90}} type="number" defaultValue={x.vatAmount.toString()}/><button className="secondary">Speichern</button></form></td>
         <td>{eur.format(Number(x.amount))}</td>

@@ -110,6 +110,10 @@ model ExpenseItem {
   originalFileName String?
   storedFileName   String?
   mimeType         String?
+  notes            String?
+  bewirtungKunde       String?
+  bewirtungTeilnehmer  String?
+  bewirtungAnlass      String?
   createdAt        DateTime      @default(now())
 
   @@index([reportId, expenseDate])

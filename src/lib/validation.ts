@@ -29,7 +29,22 @@ export const expenseSchema = z.object({
   currency: z.string().trim().toUpperCase().refine(isValidCurrencyCode, "Ungültiger Währungscode").default("EUR"),
   exchangeRate: z.coerce.number().positive().max(1000).default(1),
   vatAmount: z.coerce.number().min(0).max(100000).default(0),
-  paymentType: z.enum(["PRIVATE", "COMPANY_CARD", "CASH"])
+  paymentType: z.enum(["PRIVATE", "COMPANY_CARD", "CASH"]),
+  notes: z.string().trim().max(500).optional().or(z.literal("")),
+  bewirtungKunde: z.string().trim().max(200).optional().or(z.literal("")),
+  bewirtungTeilnehmer: z.string().trim().max(500).optional().or(z.literal("")),
+  bewirtungAnlass: z.string().trim().max(500).optional().or(z.literal(""))
+}).superRefine((values, ctx) => {
+  if (values.category !== "Bewirtung") return;
+  if (!values.bewirtungKunde?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bitte den bewirteten Kunden angeben.", path: ["bewirtungKunde"] });
+  }
+  if (!values.bewirtungTeilnehmer?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bitte die teilnehmenden Personen angeben.", path: ["bewirtungTeilnehmer"] });
+  }
+  if (!values.bewirtungAnlass?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bitte den Anlass der Bewirtung angeben.", path: ["bewirtungAnlass"] });
+  }
 });
 
 export const commentSchema = z.object({
