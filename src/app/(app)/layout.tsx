@@ -14,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="app">
       <aside className="sidebar">
+        <div className="brand-tagline">Reisekostenverwaltung</div>
         <div className="brand">Reisekosten</div>
         <Navigation role={user.role} />
         <div className="user">

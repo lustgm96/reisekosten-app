@@ -16,7 +16,7 @@
 }
 
 .transport-option:has(input:checked) {
-  background: #eef2ff;
+  background: var(--brand-soft);
   border-color: var(--brand);
-  color: #3730a3;
+  color: var(--ink);
 }

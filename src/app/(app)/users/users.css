@@ -5,7 +5,7 @@
 }
 
 .success-callout {
-  background: #ecfdf3;
+  background: var(--ok-bg);
   border-left-color: var(--ok);
   color: var(--ok);
   margin-bottom: 16px;
