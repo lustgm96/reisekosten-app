@@ -28,7 +28,10 @@ export const expenseSchema = z.object({
   amount: z.coerce.number().positive().max(100000),
   currency: z.string().trim().toUpperCase().refine(isValidCurrencyCode, "Ungültiger Währungscode").default("EUR"),
   exchangeRate: z.coerce.number().positive().max(1000).default(1),
-  vatAmount: z.coerce.number().min(0).max(100000).default(0),
+  netAmount: z.coerce.number().min(0).max(100000).default(0),
+  vat7Amount: z.coerce.number().min(0).max(100000).default(0),
+  vat19Amount: z.coerce.number().min(0).max(100000).default(0),
+  tip: z.coerce.number().min(0).max(100000).default(0),
   paymentType: z.enum(["PRIVATE", "COMPANY_CARD", "CASH"]),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
   bewirtungKunde: z.string().trim().max(200).optional().or(z.literal("")),
@@ -44,6 +47,15 @@ export const expenseSchema = z.object({
   }
   if (!values.bewirtungAnlass?.trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Bitte den Anlass der Bewirtung angeben.", path: ["bewirtungAnlass"] });
+  }
+}).superRefine((values, ctx) => {
+  const breakdownSum = values.netAmount + values.vat7Amount + values.vat19Amount + values.tip;
+  if (Math.abs(breakdownSum - values.amount) > 0.01) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Netto + 7% + 19% + Trinkgeld (${breakdownSum.toFixed(2)}) muss dem Zahlbetrag (${values.amount.toFixed(2)}) entsprechen.`,
+      path: ["netAmount"]
+    });
   }
 });
 

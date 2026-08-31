@@ -3,6 +3,7 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  breakdownSum,
   entryFromSuggestion,
   expenseCategories,
   failedReceiptEntry,
@@ -169,7 +170,7 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
       setStatus(`${receipt.fileName} wird gespeichert …`);
       const singleReceipt = new FormData();
       singleReceipt.set("files", file);
-      singleReceipt.set("entries", JSON.stringify([{ ...receipt, fileIndex: 0, vatAmount: receipt.vatAmount || "0" }]));
+      singleReceipt.set("entries", JSON.stringify([{ ...receipt, fileIndex: 0 }]));
       const response = await fetch(saveUrl, { method: "POST", body: singleReceipt });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || `${receipt.fileName} konnte nicht gespeichert werden.`);
@@ -272,6 +273,17 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
                   {activeEntry.currency !== "EUR" && Number(activeEntry.amount) > 0 && Number(activeEntry.exchangeRate) > 0 && (
                     <div className="small">≈ {(Number(activeEntry.amount) * Number(activeEntry.exchangeRate)).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</div>
                   )}
+                  <div className="row">
+                    <div><label>Netto</label><input min="0" required step=".01" type="number" value={activeEntry.netAmount} onChange={event => updateEntry(activeEntry.fileIndex, { netAmount: event.target.value })} /></div>
+                    <div><label>MwSt. 7 %</label><input min="0" required step=".01" type="number" value={activeEntry.vat7Amount} onChange={event => updateEntry(activeEntry.fileIndex, { vat7Amount: event.target.value })} /></div>
+                    <div><label>MwSt. 19 %</label><input min="0" required step=".01" type="number" value={activeEntry.vat19Amount} onChange={event => updateEntry(activeEntry.fileIndex, { vat19Amount: event.target.value })} /></div>
+                    {activeEntry.category === "Bewirtung" && (
+                      <div><label>Trinkgeld</label><input min="0" required step=".01" type="number" value={activeEntry.tip} onChange={event => updateEntry(activeEntry.fileIndex, { tip: event.target.value })} /></div>
+                    )}
+                  </div>
+                  <div className={`small${Math.abs(breakdownSum(activeEntry) - Number(activeEntry.amount)) > 0.01 ? " error" : ""}`}>
+                    Summe der Aufschlüsselung: {breakdownSum(activeEntry).toLocaleString("de-DE", { style: "currency", currency: "EUR" })} (muss dem Zahlbetrag entsprechen)
+                  </div>
                   <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as ReceiptEntry["paymentType"] })}>
                     <option value="PRIVATE">Privat ausgelegt</option><option value="COMPANY_CARD">Firmenkarte</option><option value="CASH">Bar</option>
                   </select></div>

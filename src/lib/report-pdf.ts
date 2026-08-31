@@ -20,7 +20,10 @@ type PdfExpense = {
   createdAt: Date;
   mimeType: string | null;
   storedFileName: string | null;
-  vatAmount: number | Prisma.Decimal;
+  netAmount: number | Prisma.Decimal;
+  vat7Amount: number | Prisma.Decimal;
+  vat19Amount: number | Prisma.Decimal;
+  tip: number | Prisma.Decimal;
   notes?: string | null;
   bewirtungKunde?: string | null;
   bewirtungTeilnehmer?: string | null;
@@ -61,10 +64,12 @@ const PAGE_HEIGHT = 842;
 const MARGIN = 44;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const TEXT = rgb(0.11, 0.15, 0.22);
-const MUTED = rgb(0.38, 0.43, 0.5);
-const PRIMARY = rgb(0.08, 0.28, 0.47);
-const LIGHT = rgb(0.94, 0.96, 0.98);
-const BORDER = rgb(0.82, 0.85, 0.89);
+const MUTED = rgb(0.4, 0.45, 0.52);
+const PRIMARY = rgb(0.05, 0.2, 0.36);
+const ACCENT = rgb(0.13, 0.55, 0.5);
+const LIGHT = rgb(0.95, 0.97, 0.98);
+const ZEBRA = rgb(0.975, 0.98, 0.985);
+const BORDER = rgb(0.85, 0.87, 0.91);
 const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
 const date = new Intl.DateTimeFormat("de-DE");
 const dateTime = new Intl.DateTimeFormat("de-DE", {
@@ -148,7 +153,8 @@ export async function createReportPdf(
   const addPage = () => {
     page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 92, width: PAGE_WIDTH, height: 92, color: PRIMARY });
-    page.drawText(company, { x: MARGIN, y: 809, size: 10, font: bold, color: rgb(1, 1, 1) });
+    page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 96, width: PAGE_WIDTH, height: 4, color: ACCENT });
+    page.drawText(company.toUpperCase(), { x: MARGIN, y: 809, size: 9.5, font: bold, color: rgb(1, 1, 1) });
     page.drawText("Reisekostenabrechnung", {
       x: MARGIN,
       y: 776,
@@ -165,7 +171,8 @@ export async function createReportPdf(
 
   const sectionTitle = (title: string) => {
     ensureSpace(34);
-    page.drawText(title, { x: MARGIN, y, size: 13, font: bold, color: PRIMARY });
+    page.drawRectangle({ x: MARGIN, y: y - 3, width: 4, height: 12, color: ACCENT });
+    page.drawText(title, { x: MARGIN + 10, y, size: 13, font: bold, color: PRIMARY });
     page.drawLine({
       start: { x: MARGIN, y: y - 7 },
       end: { x: PAGE_WIDTH - MARGIN, y: y - 7 },
@@ -248,8 +255,8 @@ export async function createReportPdf(
     page.drawText("Keine Ausgaben erfasst.", { x: MARGIN + 7, y: y - 10, size: 9, font: regular, color: MUTED });
     y -= 28;
   }
-  for (const expense of report.expenses) {
-    const documentTitle = receiptDocumentTitle(report.processNumber, expense.createdAt, report.expenses.indexOf(expense));
+  for (const [expenseIndex, expense] of report.expenses.entries()) {
+    const documentTitle = receiptDocumentTitle(report.processNumber, expense.createdAt, expenseIndex);
     const currency = expense.currency || "EUR";
     const originalAmountLine = currency !== "EUR"
       ? `Original: ${formatCurrencyAmount(Number(expense.amount), currency)} · Kurs ${Number(expense.exchangeRate ?? 1).toFixed(4)}\n`
@@ -258,12 +265,17 @@ export async function createReportPdf(
       ? `Kunde: ${expense.bewirtungKunde || "-"} · Teilnehmer: ${expense.bewirtungTeilnehmer || "-"} · Anlass: ${expense.bewirtungAnlass || "-"}\n`
       : "";
     const notesLine = expense.notes ? `Hinweis: ${expense.notes}\n` : "";
-    const description = wrapText(`${expense.description || "-"}\n${originalAmountLine}${bewirtungLine}${notesLine}MwSt.: ${eur.format(Number(expense.vatAmount))}\n${documentTitle}`, regular, 8.5, 263);
+    const tipLine = Number(expense.tip) > 0 ? ` · Trinkgeld: ${eur.format(Number(expense.tip))}` : "";
+    const vatLine = `Netto: ${eur.format(Number(expense.netAmount))} · MwSt. 7%: ${eur.format(Number(expense.vat7Amount))} · MwSt. 19%: ${eur.format(Number(expense.vat19Amount))}${tipLine}\n`;
+    const description = wrapText(`${expense.description || "-"}\n${originalAmountLine}${bewirtungLine}${notesLine}${vatLine}${documentTitle}`, regular, 8.5, 263);
     const rowHeight = Math.max(31, 27 + Math.max(0, description.length - 1) * 10);
     if (y - rowHeight < 52) {
       addPage();
       sectionTitle("Ausgaben (Fortsetzung)");
       drawExpenseHeader();
+    }
+    if (expenseIndex % 2 === 1) {
+      page.drawRectangle({ x: MARGIN, y: y - rowHeight + 2, width: CONTENT_WIDTH, height: rowHeight - 2, color: ZEBRA });
     }
     page.drawText(date.format(expense.expenseDate), { x: MARGIN + 7, y: y - 12, size: 8.5, font: regular, color: TEXT });
     page.drawText(categoryLabels[expense.category] ?? expense.category, { x: MARGIN + 75, y: y - 10, size: 8.5, font: bold, color: TEXT });
@@ -311,7 +323,7 @@ export async function createReportPdf(
         y: y - 14,
         width: CONTENT_WIDTH,
         height: 21,
-        color: index === summaryRows.length - 1 ? PRIMARY : LIGHT
+        color: index === summaryRows.length - 1 ? ACCENT : LIGHT
       });
     }
     const rowFont = emphasized ? bold : regular;

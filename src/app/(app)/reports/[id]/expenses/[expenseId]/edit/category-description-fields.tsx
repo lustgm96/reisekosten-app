@@ -10,7 +10,8 @@ export function CategoryDescriptionFields({
   defaultNotes = "",
   defaultBewirtungKunde = "",
   defaultBewirtungTeilnehmer = "",
-  defaultBewirtungAnlass = ""
+  defaultBewirtungAnlass = "",
+  defaultTip = "0"
 }: {
   defaultCategory: string;
   defaultDescription: string;
@@ -18,6 +19,7 @@ export function CategoryDescriptionFields({
   defaultBewirtungKunde?: string;
   defaultBewirtungTeilnehmer?: string;
   defaultBewirtungAnlass?: string;
+  defaultTip?: string;
 }) {
   const [category, setCategory] = useState(defaultCategory);
 
@@ -52,6 +54,10 @@ export function CategoryDescriptionFields({
       <div>
         <label>Anlass der Bewirtung</label>
         <input defaultValue={defaultBewirtungAnlass} name="bewirtungAnlass" placeholder="z. B. Vertragsverhandlung" required />
+      </div>
+      <div>
+        <label>Trinkgeld</label>
+        <input defaultValue={defaultTip} min="0" name="tip" required step=".01" type="number" />
       </div>
     </div>}
     <div>

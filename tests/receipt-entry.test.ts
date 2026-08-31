@@ -11,13 +11,15 @@ test("überführt Erkennungsergebnisse in editierbare Belegwerte", () => {
     description: "Taxi Dublin",
     documentType: "RECEIPT",
     expenseDate: "2026-08-05",
-    vatAmount: 2,
+    vat7Amount: null,
+    vat19Amount: 2,
     warnings: []
   });
 
   assert.equal(entry.fileIndex, 2);
   assert.equal(entry.amount, "12.50");
-  assert.equal(entry.vatAmount, "2.00");
+  assert.equal(entry.vat19Amount, "2.00");
+  assert.equal(entry.netAmount, "10.50");
   assert.deepEqual(missingReceiptFields(entry), []);
 });
 
@@ -30,7 +32,8 @@ test("nennt alle fehlenden Pflichtwerte eines Belegs", () => {
     description: "Beleg",
     documentType: "RECEIPT",
     expenseDate: null,
-    vatAmount: null,
+    vat7Amount: null,
+    vat19Amount: null,
     warnings: []
   });
   assert.deepEqual(missingReceiptFields(entry), ["Datum", "Beschreibung", "Gesamtbetrag"]);
@@ -45,7 +48,8 @@ test("verlangt Kunde, Teilnehmer und Anlass bei Bewirtungsbelegen", () => {
     description: "Geschäftsessen",
     documentType: "RECEIPT",
     expenseDate: "2026-08-05",
-    vatAmount: 5,
+    vat7Amount: null,
+    vat19Amount: 5,
     warnings: []
   });
 

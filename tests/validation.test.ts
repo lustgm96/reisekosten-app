@@ -52,7 +52,8 @@ test("akzeptiert nur positive Ausgabenbeträge", () => {
     description: "Parkhaus",
     expenseDate: "2026-07-08",
     paymentType: "PRIVATE",
-    vatAmount: 1.99
+    netAmount: 10.51,
+    vat19Amount: 1.99
   };
   assert.equal(expenseSchema.safeParse(baseExpense).success, true);
   assert.equal(expenseSchema.safeParse({ ...baseExpense, amount: 0 }).success, false);
@@ -65,7 +66,8 @@ test("verlangt Kunde, Teilnehmer und Anlass bei Bewirtungsbelegen", () => {
     description: "Geschäftsessen",
     expenseDate: "2026-07-08",
     paymentType: "PRIVATE",
-    vatAmount: 5
+    netAmount: 40,
+    vat19Amount: 5
   };
   assert.equal(expenseSchema.safeParse(bewirtungExpense).success, false);
   assert.equal(expenseSchema.safeParse({

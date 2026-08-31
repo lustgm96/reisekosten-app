@@ -16,7 +16,8 @@ test("erkennt die wichtigsten Angaben eines deutschen Belegs", () => {
   assert.equal(result.description, "Muster Restaurant GmbH");
   assert.equal(result.category, "Bewirtung");
   assert.equal(result.amount, 23.8);
-  assert.equal(result.vatAmount, 3.8);
+  assert.equal(result.vat19Amount, 3.8);
+  assert.equal(result.vat7Amount, null);
   assert.deepEqual(result.warnings, []);
 });
 
@@ -83,7 +84,7 @@ test("erkennt englische Steuerangaben und bevorzugt den Steuerbetrag", () => {
     VAT @ 13.5% 333.04 44.96 EUR
     Total incl. VAT 378.00 EUR
   `);
-  assert.equal(result.vatAmount, 44.96);
+  assert.equal(result.vat19Amount, 44.96);
   assert.equal(result.amount, 378);
 });
 

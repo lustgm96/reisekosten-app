@@ -8,7 +8,8 @@ export type ReceiptSuggestion = {
   confidence: number;
   description: string;
   expenseDate: string | null;
-  vatAmount: number | null;
+  vat7Amount: number | null;
+  vat19Amount: number | null;
   documentType: "RECEIPT" | "CARD_STATEMENT";
   warnings: string[];
 };
@@ -162,30 +163,33 @@ function detectDocumentType(text: string): ReceiptSuggestion["documentType"] {
   return statementSignals >= 2 ? "CARD_STATEMENT" : "RECEIPT";
 }
 
-function detectVat(lines: string[], total: number | null) {
+function detectVat(lines: string[], total: number | null): { amount: number; rate: 7 | 19 } | null {
   const taxLines = lines.filter(line => /(mwst|ust|umsatzsteuer|mehrwertsteuer|steuer|\bvat\b|\btax\b)/i.test(line));
   const numberedTaxValues = taxLines
     .filter(line => /\btax\s*\d/i.test(line))
     .map(line => moneyValues(line).filter(value => value > 0 && (total === null || value < total)))
     .filter(values => values.length)
     .map(values => Math.min(...values));
+  const percentage = taxLines.join(" ").match(/\b(\d{1,2}(?:[.,]\d+)?)\s*%/);
+  const detectedRate = percentage ? Number(percentage[1].replace(",", ".")) : null;
+  const rate: 7 | 19 = detectedRate !== null && Math.abs(detectedRate - 7) < Math.abs(detectedRate - 19) ? 7 : 19;
+
   if (numberedTaxValues.length > 1) {
-    return Math.round(numberedTaxValues.reduce((sum, value) => sum + value, 0) * 100) / 100;
+    const amount = Math.round(numberedTaxValues.reduce((sum, value) => sum + value, 0) * 100) / 100;
+    return { amount, rate };
   }
   const values = taxLines
     .map(line => moneyValues(line).filter(value => value > 0 && (total === null || value < total)))
     .filter(values => values.length)
     .map(values => Math.min(...values));
   const detected = values.length ? values.at(-1) ?? null : null;
-  if (detected !== null && total !== null) {
-    const percentage = taxLines.join(" ").match(/\b(\d{1,2}(?:[.,]\d+)?)\s*%/);
-    if (percentage) {
-      const rate = Number(percentage[1].replace(",", "."));
-      const calculated = Math.round(total * rate / (100 + rate) * 100) / 100;
-      if (rate >= 5 && rate <= 25 && Math.abs(calculated - detected) <= 0.15) return calculated;
+  if (detected !== null && total !== null && detectedRate !== null) {
+    const calculated = Math.round(total * detectedRate / (100 + detectedRate) * 100) / 100;
+    if (detectedRate >= 5 && detectedRate <= 25 && Math.abs(calculated - detected) <= 0.15) {
+      return { amount: calculated, rate };
     }
   }
-  return detected;
+  return detected !== null ? { amount: detected, rate } : null;
 }
 
 function detectDescription(lines: string[]) {
@@ -233,7 +237,9 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
   let amount = detectAmount(lines);
   const expenseDate = detectDate(text);
   const description = detectDescription(lines);
-  const vatAmount = detectVat(lines, amount);
+  const vat = detectVat(lines, amount);
+  const vat7Amount = vat?.rate === 7 ? vat.amount : null;
+  const vat19Amount = vat?.rate === 19 ? vat.amount : null;
   const warnings: string[] = [];
   if (documentType === "CARD_STATEMENT") {
     amount = null;
@@ -247,7 +253,7 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
   if (amount === null) warnings.push("Gesamtbetrag konnte nicht sicher erkannt werden.");
   if (description === "Beleg") warnings.push("Händler konnte nicht sicher erkannt werden.");
 
-  const foundFields = [expenseDate, amount, description !== "Beleg", vatAmount].filter(Boolean).length;
+  const foundFields = [expenseDate, amount, description !== "Beleg", vat].filter(Boolean).length;
   const confidence = Math.round(Math.min(100, Math.max(0, ocrConfidence) * 0.6 + foundFields * 10));
 
   return {
@@ -256,7 +262,8 @@ export function extractReceiptSuggestion(text: string, ocrConfidence = 0): Recei
     confidence,
     description,
     expenseDate,
-    vatAmount,
+    vat7Amount,
+    vat19Amount,
     documentType,
     warnings
   };
@@ -425,7 +432,8 @@ export function recognizeReceiptPages(
             expenseDate: detailSuggestion.expenseDate ?? retrySuggestion.expenseDate,
             description: detailSuggestion.description === "Beleg" ? retrySuggestion.description : detailSuggestion.description,
             category: detailSuggestion.category === "Sonstiges" ? retrySuggestion.category : detailSuggestion.category,
-            vatAmount: detailSuggestion.vatAmount ?? retrySuggestion.vatAmount
+            vat7Amount: detailSuggestion.vat7Amount ?? retrySuggestion.vat7Amount,
+            vat19Amount: detailSuggestion.vat19Amount ?? retrySuggestion.vat19Amount
           };
         }
         if (suggestion.amount === null && detailSuggestion.amount !== null) {
@@ -440,8 +448,11 @@ export function recognizeReceiptPages(
         if (suggestion.category === "Sonstiges" && detailSuggestion.category !== "Sonstiges") {
           suggestion.category = detailSuggestion.category;
         }
-        if (suggestion.vatAmount === null && detailSuggestion.vatAmount !== null) {
-          suggestion.vatAmount = detailSuggestion.vatAmount;
+        if (suggestion.vat7Amount === null && detailSuggestion.vat7Amount !== null) {
+          suggestion.vat7Amount = detailSuggestion.vat7Amount;
+        }
+        if (suggestion.vat19Amount === null && detailSuggestion.vat19Amount !== null) {
+          suggestion.vat19Amount = detailSuggestion.vat19Amount;
         }
         suggestion.warnings = suggestion.warnings.filter(warning =>
           !(suggestion.expenseDate && warning.startsWith("Datum konnte")) &&

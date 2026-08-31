@@ -38,10 +38,7 @@ export default async function EditExpense({
       throw new Error("Nicht erlaubt");
     }
 
-    const values = expenseSchema.parse({
-      ...Object.fromEntries(formData),
-      vatAmount: current.vatAmount
-    });
+    const values = expenseSchema.parse(Object.fromEntries(formData));
     if (current.report.accommodationMode === "PER_DIEM" && values.category === "Hotel") {
       throw new Error("Bei Übernachtungspauschale kann kein Hotelbeleg erfasst werden.");
     }
@@ -83,10 +80,11 @@ export default async function EditExpense({
             defaultBewirtungKunde={expense.bewirtungKunde ?? ""}
             defaultBewirtungTeilnehmer={expense.bewirtungTeilnehmer ?? ""}
             defaultBewirtungAnlass={expense.bewirtungAnlass ?? ""}
+            defaultTip={expense.tip.toString()}
           />
           <div className="row">
             <div>
-              <label>Betrag</label>
+              <label>Betrag (Zahlbetrag)</label>
               <input
                 name="amount"
                 type="number"
@@ -115,6 +113,21 @@ export default async function EditExpense({
               />
             </div>
           </div>
+          <div className="row">
+            <div>
+              <label>Netto</label>
+              <input min="0" name="netAmount" required step=".01" type="number" defaultValue={expense.netAmount.toString()} />
+            </div>
+            <div>
+              <label>MwSt. 7 %</label>
+              <input min="0" name="vat7Amount" required step=".01" type="number" defaultValue={expense.vat7Amount.toString()} />
+            </div>
+            <div>
+              <label>MwSt. 19 %</label>
+              <input min="0" name="vat19Amount" required step=".01" type="number" defaultValue={expense.vat19Amount.toString()} />
+            </div>
+          </div>
+          <p className="small">Netto + 7 % + 19 % + Trinkgeld muss dem Zahlbetrag entsprechen.</p>
           <div>
             <label>Zahlungsart</label>
             <select name="paymentType" defaultValue={expense.paymentType}>

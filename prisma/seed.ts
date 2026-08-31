@@ -25,7 +25,7 @@ async function main() {
   });
 
   const settings = {
-    companyName: "Muster GmbH",
+    companyName: "PureLink GmbH",
     mileageRate: "0.30",
     mealFullDay: "28.00",
     mealArrivalDeparture: "14.00",
@@ -60,8 +60,8 @@ async function main() {
         submittedAt: new Date(),
         expenses: {
           create: [
-            { expenseDate: new Date("2026-07-06"), category: "Hotel", description: "Übernachtung Hotel Hafen", amount: 149, vatAmount: 9.75, paymentType: PaymentType.COMPANY_CARD },
-            { expenseDate: new Date("2026-07-07"), category: "Parken", description: "Parkhaus Innenstadt", amount: 18, vatAmount: 2.87, paymentType: PaymentType.PRIVATE }
+            { expenseDate: new Date("2026-07-06"), category: "Hotel", description: "Übernachtung Hotel Hafen", amount: 149, netAmount: 139.25, vat7Amount: 9.75, paymentType: PaymentType.COMPANY_CARD },
+            { expenseDate: new Date("2026-07-07"), category: "Parken", description: "Parkhaus Innenstadt", amount: 18, netAmount: 15.13, vat19Amount: 2.87, paymentType: PaymentType.PRIVATE }
           ]
         }
       }
