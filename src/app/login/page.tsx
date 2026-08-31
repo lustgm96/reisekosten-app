@@ -9,5 +9,5 @@ export default async function Login({searchParams}:{searchParams:Promise<{error?
     <div><label>Passwort</label><input name="password" type="password" defaultValue="dev1234!" required/></div>
     {params.error&&<div className="error">Anmeldung fehlgeschlagen.</div>}
     <button>Anmelden</button>
-  </form></div></main>
+  </form><p className="small login-link"><a href="/register">Noch kein Zugang? Jetzt registrieren</a></p></div></main>
 }

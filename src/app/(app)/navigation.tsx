@@ -1,8 +1,9 @@
 "use client";
 
-import type { Role } from "@prisma/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+type Role = "EMPLOYEE" | "APPROVER" | "ADMIN";
 
 type NavigationProps = {
   role: Role;

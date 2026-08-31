@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "./db";
 import { basePath } from "./paths";
+import { passwordSchema } from "./validation";
 
 const cookieName = "reisekosten_session";
 const key = new TextEncoder().encode(
@@ -28,6 +29,23 @@ export async function login(email: string, password: string) {
     maxAge: 43200
   });
   return true;
+}
+
+export async function register(name: string, email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const parsedPassword = passwordSchema.safeParse({ password });
+  if (!name.trim() || !normalizedEmail || !parsedPassword.success) return "invalid" as const;
+
+  const existingUser = await db.user.findUnique({ where: { email: normalizedEmail } });
+  if (existingUser) return "exists" as const;
+
+  const passwordHash = await bcrypt.hash(parsedPassword.data.password, 12);
+  const user = await db.user.create({
+    data: { name: name.trim(), email: normalizedEmail, passwordHash, role: "EMPLOYEE" }
+  });
+
+  await login(normalizedEmail, parsedPassword.data.password);
+  return user;
 }
 
 export async function logout() {
