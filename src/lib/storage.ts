@@ -53,7 +53,11 @@ export function validateReceiptFile(file: unknown): asserts file is File {
 
 // Auf Vercel gibt es kein persistentes Dateisystem: Mit BLOB_READ_WRITE_TOKEN
 // landen Belege in einem privaten Vercel-Blob-Store, sonst lokal auf der Platte.
-const useBlobStorage = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+// Beim Verbinden eines Stores kann Vercel ein Prefix vergeben (z. B. STORAGE_READ_WRITE_TOKEN).
+const blobToken = () =>
+  process.env.BLOB_READ_WRITE_TOKEN ||
+  Object.entries(process.env).find(([name, value]) => name.endsWith("_READ_WRITE_TOKEN") && value)?.[1];
+const useBlobStorage = () => Boolean(blobToken());
 const uploadDir = () => process.env.UPLOAD_DIR || "./storage/uploads";
 
 async function writeStored(storedFileName: string, buffer: Buffer, contentType?: string) {
@@ -61,6 +65,7 @@ async function writeStored(storedFileName: string, buffer: Buffer, contentType?:
     if (useBlobStorage()) {
       await put(storedFileName, buffer, {
         access: "private",
+        token: blobToken(),
         addRandomSuffix: false,
         contentType: contentType || "application/octet-stream"
       });
@@ -103,7 +108,7 @@ export async function removeStoredFiles(storedFileNames: Array<string | null>) {
     .map(name => path.basename(name));
 
   if (useBlobStorage()) {
-    await Promise.allSettled(fileNames.map(fileName => del(fileName)));
+    await Promise.allSettled(fileNames.map(fileName => del(fileName, { token: blobToken() })));
     return;
   }
 
@@ -114,7 +119,7 @@ export async function readStoredFile(storedFileName: string) {
   const fileName = path.basename(storedFileName);
 
   if (useBlobStorage()) {
-    const result = await get(fileName, { access: "private" });
+    const result = await get(fileName, { access: "private", token: blobToken() });
     if (!result || result.statusCode !== 200) throw new Error("Datei nicht gefunden.");
     return Buffer.from(await new Response(result.stream).arrayBuffer());
   }
