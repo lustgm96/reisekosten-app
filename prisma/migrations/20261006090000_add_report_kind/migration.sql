@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "ExpenseReport" ADD COLUMN "kind" TEXT NOT NULL DEFAULT 'TRAVEL';

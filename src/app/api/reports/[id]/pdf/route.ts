@@ -26,7 +26,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{id:string}>}){
   return new Response(Uint8Array.from(bytes),{
     headers:{
       "content-type":"application/pdf",
-      "content-disposition":`attachment; filename="${report.processNumber}-Reisekosten.pdf"`
+      "content-disposition":`attachment; filename="${report.processNumber}-${report.kind==="GENERAL"?"Beleg":"Reisekosten"}.pdf"`
     }
   });
 }

@@ -2,6 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
+import { shrinkImageForUpload } from "@/lib/client-image";
 
 export function ItemReceiptUpload({ uploadUrl }: { uploadUrl: string }) {
   const router = useRouter();
@@ -9,13 +10,14 @@ export function ItemReceiptUpload({ uploadUrl }: { uploadUrl: string }) {
   const [uploading, setUploading] = useState(false);
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const input = event.target;
+    const picked = input.files?.[0];
+    if (!picked) return;
     setUploading(true);
     setError("");
     try {
       const formData = new FormData();
-      formData.set("file", file);
+      formData.set("file", await shrinkImageForUpload(picked));
       const response = await fetch(uploadUrl, { method: "POST", body: formData });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || "Der Beleg konnte nicht hochgeladen werden.");
@@ -24,7 +26,7 @@ export function ItemReceiptUpload({ uploadUrl }: { uploadUrl: string }) {
       setError(uploadError instanceof Error ? uploadError.message : "Der Beleg konnte nicht hochgeladen werden.");
     } finally {
       setUploading(false);
-      event.target.value = "";
+      input.value = "";
     }
   }
 

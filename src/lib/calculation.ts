@@ -21,6 +21,7 @@ type CalculationReport = Pick<
   | "startAt"
 > & {
   accommodationMode: "ACTUAL" | "PER_DIEM" | "PROVIDED";
+  kind?: "TRAVEL" | "GENERAL";
   perDiemOvernight: ExpenseItem["amount"] | number;
 };
 
@@ -39,12 +40,46 @@ function calendarDays(startAt: Date, endAt: Date) {
   return Math.max(1, Math.round((endDay - startDay) / 86_400_000) + 1);
 }
 
+function sumByPaymentType(expenses: CalculationExpense[], type: PaymentType) {
+  return roundMoney(
+    expenses
+      .filter(expense => expense.paymentType === type)
+      .reduce((total, expense) => total + toEur(expense.amount, expense.exchangeRate ?? 1), 0)
+  );
+}
+
+// Allgemeiner Beleg: keine Pauschalen, nur belegte Ausgaben.
+function calculateGeneralTotals(expenses: CalculationExpense[]) {
+  const privateExpenses = sumByPaymentType(expenses, "PRIVATE");
+  const companyCardExpenses = sumByPaymentType(expenses, "COMPANY_CARD");
+  const cashExpenses = sumByPaymentType(expenses, "CASH");
+
+  return {
+    days: 0,
+    nights: 0,
+    mealBase: 0,
+    mealDeductions: 0,
+    mealAllowance: 0,
+    lodgingAllowance: 0,
+    mileage: 0,
+    privateExpenses,
+    companyCardExpenses,
+    cashExpenses,
+    reimbursement: roundMoney(privateExpenses + cashExpenses),
+    totalCosts: roundMoney(privateExpenses + companyCardExpenses + cashExpenses)
+  };
+}
+
 export function calculateReport(
   report: CalculationReport,
   expenses: CalculationExpense[],
   settings: NumericSettings,
   perDiemRate?: Pick<PerDiemRate, "fullDay" | "partialDay">
 ) {
+  if (report.kind === "GENERAL") {
+    return calculateGeneralTotals(expenses);
+  }
+
   if (report.endAt <= report.startAt) {
     throw new Error("Das Reiseende muss nach dem Reisebeginn liegen.");
   }
@@ -73,12 +108,7 @@ export function calculateReport(
       : 0;
   const mileage = roundMoney(report.privateKilometers * settings.mileageRate);
 
-  const sum = (type: PaymentType) =>
-    roundMoney(
-      expenses
-        .filter(expense => expense.paymentType === type)
-        .reduce((total, expense) => total + toEur(expense.amount, expense.exchangeRate ?? 1), 0)
-    );
+  const sum = (type: PaymentType) => sumByPaymentType(expenses, type);
 
   const privateExpenses = sum("PRIVATE");
   const companyCardExpenses = sum("COMPANY_CARD");

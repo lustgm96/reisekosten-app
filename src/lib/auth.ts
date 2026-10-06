@@ -7,9 +7,16 @@ import { basePath } from "./paths";
 import { passwordSchema } from "./validation";
 
 const cookieName = "reisekosten_session";
-const key = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "lokaler-entwicklungs-schluessel-bitte-ersetzen"
-);
+function getKey() {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SECRET muss in Produktion gesetzt sein.");
+  }
+  return new TextEncoder().encode(secret || "lokaler-entwicklungs-schluessel-bitte-ersetzen");
+}
+
+export const isSelfRegistrationEnabled = () =>
+  process.env.NODE_ENV !== "production" || process.env.ALLOW_SELF_REGISTRATION === "true";
 
 export async function login(email: string, password: string) {
   const user = await db.user.findUnique({ where: { email } });
@@ -19,7 +26,7 @@ export async function login(email: string, password: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("12h")
-    .sign(key);
+    .sign(getKey());
 
   (await cookies()).set(cookieName, token, {
     httpOnly: true,
@@ -32,6 +39,7 @@ export async function login(email: string, password: string) {
 }
 
 export async function register(name: string, email: string, password: string) {
+  if (!isSelfRegistrationEnabled()) return "invalid" as const;
   const normalizedEmail = email.trim().toLowerCase();
   const parsedPassword = passwordSchema.safeParse({ password });
   if (!name.trim() || !normalizedEmail || !parsedPassword.success) return "invalid" as const;
@@ -62,7 +70,7 @@ export async function currentUser() {
   const token = (await cookies()).get(cookieName)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, key);
+    const { payload } = await jwtVerify(token, getKey());
     if (!payload.sub) return null;
     const user = await db.user.findUnique({ where: { id: payload.sub } });
     return user?.active ? user : null;

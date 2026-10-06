@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { del, get, put } from "@vercel/blob";
 
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 export const MAX_RECEIPT_FILES = 20;
@@ -50,39 +51,63 @@ export function validateReceiptFile(file: unknown): asserts file is File {
   }
 }
 
+// Auf Vercel gibt es kein persistentes Dateisystem: Mit BLOB_READ_WRITE_TOKEN
+// landen Belege in einem privaten Vercel-Blob-Store, sonst lokal auf der Platte.
+const useBlobStorage = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const uploadDir = () => process.env.UPLOAD_DIR || "./storage/uploads";
+
+async function writeStored(storedFileName: string, buffer: Buffer, contentType?: string) {
+  if (useBlobStorage()) {
+    await put(storedFileName, buffer, {
+      access: "private",
+      addRandomSuffix: false,
+      contentType: contentType || "application/octet-stream"
+    });
+    return;
+  }
+
+  await fs.mkdir(uploadDir(), { recursive: true });
+  await fs.writeFile(path.join(uploadDir(), storedFileName), buffer);
+}
+
 export async function storeUpload(file: File) {
   validateReceiptFile(file);
-
-  const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
-  await fs.mkdir(uploadDir, { recursive: true });
 
   const extension = path.extname(file.name).replace(/[^.a-zA-Z0-9]/g, "");
   const storedFileName = `${crypto.randomUUID()}${extension}`;
 
-  await fs.writeFile(path.join(uploadDir, storedFileName), Buffer.from(await file.arrayBuffer()));
+  await writeStored(storedFileName, Buffer.from(await file.arrayBuffer()), file.type);
 
   return { originalFileName: file.name, storedFileName, mimeType: file.type };
 }
 
 export async function storeGeneratedFile(buffer: Buffer | Uint8Array, extension: string) {
-  const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
-  await fs.mkdir(uploadDir, { recursive: true });
-
   const storedFileName = `${crypto.randomUUID()}${extension}`;
-  await fs.writeFile(path.join(uploadDir, storedFileName), Buffer.from(buffer));
+  await writeStored(storedFileName, Buffer.from(buffer));
   return storedFileName;
 }
 
 export async function removeStoredFiles(storedFileNames: Array<string | null>) {
-  const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
-  const fileNames = storedFileNames.filter((name): name is string => Boolean(name));
+  const fileNames = storedFileNames
+    .filter((name): name is string => Boolean(name))
+    .map(name => path.basename(name));
 
-  await Promise.allSettled(
-    fileNames.map(fileName => fs.unlink(path.join(uploadDir, path.basename(fileName))))
-  );
+  if (useBlobStorage()) {
+    await Promise.allSettled(fileNames.map(fileName => del(fileName)));
+    return;
+  }
+
+  await Promise.allSettled(fileNames.map(fileName => fs.unlink(path.join(uploadDir(), fileName))));
 }
 
 export async function readStoredFile(storedFileName: string) {
-  const uploadDir = process.env.UPLOAD_DIR || "./storage/uploads";
-  return fs.readFile(path.join(uploadDir, path.basename(storedFileName)));
+  const fileName = path.basename(storedFileName);
+
+  if (useBlobStorage()) {
+    const result = await get(fileName, { access: "private" });
+    if (!result || result.statusCode !== 200) throw new Error("Datei nicht gefunden.");
+    return Buffer.from(await new Response(result.stream).arrayBuffer());
+  }
+
+  return fs.readFile(path.join(uploadDir(), fileName));
 }

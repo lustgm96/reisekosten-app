@@ -21,6 +21,11 @@ export const reportSchema = z.object({
   path: ["endAt"]
 });
 
+export const generalReceiptSchema = z.object({
+  title: z.string().trim().min(2).max(120),
+  purpose: z.string().trim().min(3).max(500)
+});
+
 export const expenseSchema = z.object({
   expenseDate: z.coerce.date(),
   category: z.string().trim().min(2).max(80),

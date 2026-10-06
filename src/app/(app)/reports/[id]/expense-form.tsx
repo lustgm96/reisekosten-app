@@ -12,6 +12,7 @@ import {
   type ReceiptSuggestion
 } from "@/lib/receipt-entry";
 import { currencyOptions } from "@/lib/currency";
+import { shrinkImageForUpload } from "@/lib/client-image";
 import "./expense-form.css";
 
 type Preview = { fileIndex: number; mimeType: string; url: string };
@@ -111,13 +112,15 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
     setAnalyzing(false);
   }
 
-  function selectFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
+  async function selectFiles(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target;
+    const picked = Array.from(input.files ?? []);
+    const files = await Promise.all(picked.map(shrinkImageForUpload));
     if (files.length > MAX_FILES) {
       setUploadedFiles([]);
       setEntries([]);
       setStatus(`Bitte höchstens ${MAX_FILES} Belege auf einmal auswählen.`);
-      event.target.value = "";
+      input.value = "";
       return;
     }
     if (!files.length) return;
@@ -201,10 +204,24 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
   return (
     <form action={save} className="expense-entry-form">
       <div className="receipt-upload-first">
-        <label htmlFor="new-expense-files">1. Belege auswählen oder fotografieren</label>
+        <label>1. Belege fotografieren oder auswählen</label>
+        <div className="upload-buttons">
+          <label className="button upload-button" htmlFor="new-expense-camera">📷 Foto aufnehmen</label>
+          <label className="button secondary upload-button" htmlFor="new-expense-files">📁 Datei / Galerie wählen</label>
+        </div>
+        <input
+          accept="image/*"
+          capture="environment"
+          className="visually-hidden"
+          id="new-expense-camera"
+          key={`camera-${uploadKey}`}
+          name="camera"
+          onChange={selectFiles}
+          type="file"
+        />
         <input
           accept="image/jpeg,image/png,image/webp,application/pdf"
-          capture="environment"
+          className="visually-hidden"
           id="new-expense-files"
           key={uploadKey}
           multiple
@@ -287,11 +304,13 @@ export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps)
                   <div><label>Zahlungsart</label><select value={activeEntry.paymentType} onChange={event => updateEntry(activeEntry.fileIndex, { paymentType: event.target.value as ReceiptEntry["paymentType"] })}>
                     <option value="PRIVATE">Privat ausgelegt</option><option value="COMPANY_CARD">Firmenkarte</option><option value="CASH">Bar</option>
                   </select></div>
-                  {activeEntry.category === "Bewirtung" && <div className="row">
-                    <div><label>Bewirteter Kunde</label><input placeholder="z. B. Musterfirma GmbH" required value={activeEntry.bewirtungKunde} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungKunde: event.target.value })} /></div>
-                    <div><label>Teilnehmende Personen</label><input placeholder="z. B. Max Mustermann, Erika Musterfrau" required value={activeEntry.bewirtungTeilnehmer} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungTeilnehmer: event.target.value })} /></div>
-                    <div><label>Anlass der Bewirtung</label><input placeholder="z. B. Vertragsverhandlung" required value={activeEntry.bewirtungAnlass} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungAnlass: event.target.value })} /></div>
-                  </div>}
+                  {activeEntry.category === "Bewirtung" && <fieldset className="bewirtung-box">
+                    <legend>Bewirtung / Kundeneinladung</legend>
+                    <div className="small">Für den steuerlichen Nachweis: bewirtete Personen und Anlass angeben. Ort und Datum stehen auf dem Beleg.</div>
+                    <div><label>Bewirteter Kunde / Firma</label><input placeholder="z. B. Musterfirma GmbH" required value={activeEntry.bewirtungKunde} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungKunde: event.target.value })} /></div>
+                    <div><label>Teilnehmende Personen</label><textarea placeholder="z. B. Max Mustermann (Musterfirma), Erika Musterfrau (Musterfirma), ich" required rows={2} value={activeEntry.bewirtungTeilnehmer} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungTeilnehmer: event.target.value })} /></div>
+                    <div><label>Grund / Anlass der Einladung</label><input placeholder="z. B. Vertragsverhandlung Projekt X" required value={activeEntry.bewirtungAnlass} onChange={event => updateEntry(activeEntry.fileIndex, { bewirtungAnlass: event.target.value })} /></div>
+                  </fieldset>}
                   <div>
                     <label>Kommentar / Hinweis</label>
                     <textarea placeholder="Optionale Anmerkung zu diesem Beleg" rows={2} value={activeEntry.notes} onChange={event => updateEntry(activeEntry.fileIndex, { notes: event.target.value })} />

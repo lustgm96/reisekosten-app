@@ -43,6 +43,7 @@ export type ReportPdfData = {
   comments: PdfComment[];
   completedAt: Date | null;
   destination: string;
+  kind?: "TRAVEL" | "GENERAL";
   dinners: number;
   employee: { name: string; signatureStoredFileName?: string | null; signatureMimeType?: string | null };
   endAt: Date;
@@ -155,7 +156,7 @@ export async function createReportPdf(
     page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 92, width: PAGE_WIDTH, height: 92, color: PRIMARY });
     page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 96, width: PAGE_WIDTH, height: 4, color: ACCENT });
     page.drawText(company.toUpperCase(), { x: MARGIN, y: 809, size: 9.5, font: bold, color: rgb(1, 1, 1) });
-    page.drawText("Reisekostenabrechnung", {
+    page.drawText(report.kind === "GENERAL" ? "Belegabrechnung" : "Reisekostenabrechnung", {
       x: MARGIN,
       y: 776,
       size: 22,
@@ -209,12 +210,20 @@ export async function createReportPdf(
     color: PRIMARY
   });
 
-  sectionTitle("Reisedaten");
+  const isGeneral = report.kind === "GENERAL";
+  sectionTitle(isGeneral ? "Belegdaten" : "Reisedaten");
   let blockHeight = Math.max(
     labelValue("Mitarbeiter", report.employee.name, MARGIN, 238),
     labelValue("Abrechnung", report.title, MARGIN + 269, 238)
   );
   y -= blockHeight;
+  if (isGeneral) {
+    blockHeight = Math.max(
+      labelValue("Verwendungszweck", report.purpose, MARGIN, 238),
+      labelValue("Vorgangsnummer", report.processNumber, MARGIN + 269, 238)
+    );
+    y -= blockHeight + 8;
+  } else {
   blockHeight = Math.max(
     labelValue("Reisezweck", report.purpose, MARGIN, 238),
     labelValue("Reiseziel", report.destination, MARGIN + 269, 238)
@@ -234,6 +243,7 @@ export async function createReportPdf(
     CONTENT_WIDTH
   );
   y -= blockHeight + 8;
+  }
 
   const drawExpenseHeader = () => {
     page.drawRectangle({ x: MARGIN, y: y - 19, width: CONTENT_WIDTH, height: 25, color: LIGHT });
@@ -303,17 +313,20 @@ export async function createReportPdf(
 
   const totals = calculateReport(report, report.expenses, settings, perDiemRate);
   sectionTitle("Berechnung");
-  const summaryRows: Array<[string, number, boolean?]> = [
+  const travelRows: Array<[string, number, boolean?]> = [
     [`Verpflegung (${totals.days} Reisetag${totals.days === 1 ? "" : "e"})`, totals.mealBase],
     ["Abzug gestellter Mahlzeiten", -totals.mealDeductions],
     ["Verpflegungspauschale", totals.mealAllowance],
     [`Übernachtungspauschale (${totals.nights} Nächte)`, totals.lodgingAllowance],
-    [`Kilometergeld (${report.privateKilometers.toLocaleString("de-DE")} km)`, totals.mileage],
+    [`Kilometergeld (${report.privateKilometers.toLocaleString("de-DE")} km)`, totals.mileage]
+  ];
+  const summaryRows: Array<[string, number, boolean?]> = [
+    ...(isGeneral ? [] : travelRows),
     ["Privat ausgelegte Ausgaben", totals.privateExpenses],
     ["Bar ausgelegte Ausgaben", totals.cashExpenses],
     ["Ausgaben mit Firmenkarte", totals.companyCardExpenses],
     ["Erstattung an Mitarbeiter", totals.reimbursement, true],
-    ["Gesamtkosten der Reise", totals.totalCosts, true]
+    [isGeneral ? "Gesamtkosten" : "Gesamtkosten der Reise", totals.totalCosts, true]
   ];
   ensureSpace(summaryRows.length * 20 + 8);
   summaryRows.forEach(([label, value, emphasized], index) => {
@@ -444,7 +457,7 @@ export async function createReportPdf(
 
   pdf.setTitle(`${report.processNumber} - ${report.title}`);
   pdf.setAuthor(company);
-  pdf.setSubject(`Reisekostenabrechnung von ${report.employee.name}`);
+  pdf.setSubject(`${report.kind === "GENERAL" ? "Belegabrechnung" : "Reisekostenabrechnung"} von ${report.employee.name}`);
   return pdf.save();
 }
 

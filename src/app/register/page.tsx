@@ -1,8 +1,10 @@
-import { register } from "@/lib/auth";
+import { isSelfRegistrationEnabled, register } from "@/lib/auth";
+import { ThemeToggle } from "../theme-toggle";
 import { redirect } from "next/navigation";
 
 export default async function Register({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const params = await searchParams;
+  if (!isSelfRegistrationEnabled()) redirect("/login");
 
   async function action(fd: FormData) {
     "use server";
@@ -17,7 +19,7 @@ export default async function Register({ searchParams }: { searchParams: Promise
     redirect("/");
   }
 
-  return <main className="login"><div className="card"><h1>Zugang anlegen</h1><p className="sub">Registriere dich für die digitale Reisekostenabrechnung.</p><form action={action}>
+  return <main className="login"><ThemeToggle floating /><div className="card"><h1>Zugang anlegen</h1><p className="sub">Registriere dich für die digitale Reisekostenabrechnung.</p><form action={action}>
     <div><label htmlFor="name">Name</label><input id="name" name="name" type="text" autoComplete="name" required /></div>
     <div><label htmlFor="email">E-Mail</label><input id="email" name="email" type="email" autoComplete="email" required /></div>
     <div><label htmlFor="password">Passwort</label><input id="password" name="password" type="password" minLength={8} autoComplete="new-password" required /><span className="small">Mindestens 8 Zeichen.</span></div>

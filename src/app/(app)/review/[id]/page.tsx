@@ -56,6 +56,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
   return <><h1>Abrechnung prüfen</h1><div className="sub">{report.employee.name} · {report.title} · Vorgangsnummer <strong>{report.processNumber}</strong></div>
   <section className="grid two">
     <div className="card">
+      {report.kind==="GENERAL"?<><h2>Beleg</h2><table><tbody><tr><th>Zweck</th><td>{report.purpose}</td></tr></tbody></table></>:<>
       <h2>Reise</h2>
       <table><tbody>
         <tr><th>Ziel</th><td>{report.destination}, {countryLabels[report.countryCode as keyof typeof countryLabels] ?? report.countryCode}</td></tr>
@@ -65,6 +66,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
         <tr><th>Zweck</th><td>{report.purpose}</td></tr>
         <tr><th>Verkehrsmittel</th><td>{formatTransportSelection(report.transportType)}</td></tr>
       </tbody></table>
+      </>}
 
       <h2 style={{marginTop:22}}>Ausgaben</h2>
       <table><thead><tr><th>Datum</th><th>Beschreibung</th><th>Zahlung</th><th>Netto</th><th>MwSt. 7%</th><th>MwSt. 19%</th><th>Trinkgeld</th><th>Betrag</th></tr></thead><tbody>
@@ -83,9 +85,7 @@ export default async function ReviewDetail({params}:{params:Promise<{id:string}>
 
     <div className="grid">
       <div className="card"><h2>Zusammenfassung</h2><div className="summary">
-        <span>Verpflegung</span><strong>{eur.format(totals.mealAllowance)}</strong>
-        <span>Übernachtungspauschale</span><strong>{eur.format(totals.lodgingAllowance)}</strong>
-        <span>Kilometergeld</span><strong>{eur.format(totals.mileage)}</strong>
+        {report.kind!=="GENERAL"&&<><span>Verpflegung</span><strong>{eur.format(totals.mealAllowance)}</strong><span>Übernachtungspauschale</span><strong>{eur.format(totals.lodgingAllowance)}</strong><span>Kilometergeld</span><strong>{eur.format(totals.mileage)}</strong></>}
         <span>Privat ausgelegt</span><strong>{eur.format(totals.privateExpenses)}</strong>
         <span>Firmenkarte</span><strong>{eur.format(totals.companyCardExpenses)}</strong>
         <hr/><hr/>

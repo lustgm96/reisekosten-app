@@ -1,5 +1,6 @@
 import { logout, requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { ThemeToggle } from "../theme-toggle";
 import { Navigation } from "./navigation";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="user">
           <span className="user-name">{user.name}</span>
           <span className="user-role">{user.role}</span>
+          <ThemeToggle />
           <form action={signOut}>
             <button className="secondary sign-out">Abmelden</button>
           </form>

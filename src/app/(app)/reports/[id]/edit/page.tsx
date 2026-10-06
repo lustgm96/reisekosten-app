@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { reportSchema } from "@/lib/validation";
+import { generalReceiptSchema, reportSchema } from "@/lib/validation";
 import { notFound, redirect } from "next/navigation";
 import { withBasePath } from "@/lib/paths";
 import { getPerDiemRates } from "@/lib/settings";
@@ -29,6 +29,11 @@ export default async function EditReport({
 
     if (!canEmployeeEditReport(actor.id, current.employeeId, current.status)) {
       throw new Error("Nicht erlaubt");
+    }
+
+    if (current.kind === "GENERAL") {
+      await db.expenseReport.update({ where: { id }, data: generalReceiptSchema.parse(Object.fromEntries(formData)) });
+      redirect(`/reports/${id}`);
     }
 
     const values = reportSchema.parse(Object.fromEntries(formData));
@@ -67,9 +72,12 @@ export default async function EditReport({
     <>
       <h1>Abrechnung bearbeiten</h1>
       <div className="sub">Reisedaten und Pauschalangaben anpassen</div>
-      <div className="card" style={{ maxWidth: 850 }}>
+      <div className="card form-card">
         <form action={update}>
-          <ReportFields defaults={report}/>
+          {report.kind === "GENERAL" ? <>
+            <div><label>Titel</label><input name="title" defaultValue={report.title} required/></div>
+            <div><label>Verwendungszweck</label><textarea name="purpose" defaultValue={report.purpose} required/></div>
+          </> : <ReportFields defaults={report}/>}
           <div className="actions">
             <button>Änderungen speichern</button>
             <a className="button secondary" href={withBasePath(`/reports/${id}`)}>

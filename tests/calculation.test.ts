@@ -139,3 +139,18 @@ test("verwendet ausländische Pauschalen und prozentuale Mahlzeitenkürzungen", 
   assert.equal(result.mealDeductions, 30);
   assert.equal(result.mealAllowance, 86);
 });
+
+test("allgemeiner Beleg enthält keine Pauschalen und kein Kilometergeld", () => {
+  const now = new Date(2026, 6, 6, 9, 0);
+  const result = calculateReport(
+    report({ kind: "GENERAL", startAt: now, endAt: now, privateKilometers: 50, accommodationMode: "PER_DIEM" }),
+    [{ amount: 60, paymentType: "PRIVATE" }, { amount: 40, paymentType: "COMPANY_CARD" }],
+    settings
+  );
+
+  assert.equal(result.mealAllowance, 0);
+  assert.equal(result.lodgingAllowance, 0);
+  assert.equal(result.mileage, 0);
+  assert.equal(result.reimbursement, 60);
+  assert.equal(result.totalCosts, 100);
+});

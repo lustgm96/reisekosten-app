@@ -42,24 +42,25 @@ export function CategoryDescriptionFields({
         Bitte beschreibe die Ausgabe möglichst konkret und nenne ihren geschäftlichen Anlass. Das erleichtert die Zuordnung und Prüfung.
       </div>}
     </div>
-    {category === "Bewirtung" && <div className="row">
+    {category === "Bewirtung" && <fieldset className="bewirtung-box">
+      <legend>Bewirtung / Kundeneinladung</legend>
       <div>
-        <label>Bewirteter Kunde</label>
+        <label>Bewirteter Kunde / Firma</label>
         <input defaultValue={defaultBewirtungKunde} name="bewirtungKunde" placeholder="z. B. Musterfirma GmbH" required />
       </div>
       <div>
         <label>Teilnehmende Personen</label>
-        <input defaultValue={defaultBewirtungTeilnehmer} name="bewirtungTeilnehmer" placeholder="z. B. Max Mustermann, Erika Musterfrau" required />
+        <textarea defaultValue={defaultBewirtungTeilnehmer} name="bewirtungTeilnehmer" placeholder="z. B. Max Mustermann (Musterfirma), Erika Musterfrau (Musterfirma), ich" required rows={2} />
       </div>
       <div>
-        <label>Anlass der Bewirtung</label>
+        <label>Grund / Anlass der Einladung</label>
         <input defaultValue={defaultBewirtungAnlass} name="bewirtungAnlass" placeholder="z. B. Vertragsverhandlung" required />
       </div>
       <div>
         <label>Trinkgeld</label>
         <input defaultValue={defaultTip} min="0" name="tip" required step=".01" type="number" />
       </div>
-    </div>}
+    </fieldset>}
     <div>
       <label>Kommentar / Hinweis</label>
       <textarea defaultValue={defaultNotes} name="notes" placeholder="Optionale Anmerkung zu diesem Beleg" rows={2} />

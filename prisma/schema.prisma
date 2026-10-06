@@ -21,6 +21,11 @@ enum ReportStatus {
   COMPLETED
 }
 
+enum ReportKind {
+  TRAVEL
+  GENERAL
+}
+
 enum PaymentType {
   PRIVATE
   COMPANY_CARD
@@ -71,6 +76,7 @@ model User {
 model ExpenseReport {
   id                String       @id @default(cuid())
   processNumber     String       @unique
+  kind              ReportKind   @default(TRAVEL)
   employeeId        String
   employee          User         @relation(fields: [employeeId], references: [id])
   title             String
