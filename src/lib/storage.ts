@@ -57,17 +57,27 @@ const useBlobStorage = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const uploadDir = () => process.env.UPLOAD_DIR || "./storage/uploads";
 
 async function writeStored(storedFileName: string, buffer: Buffer, contentType?: string) {
-  if (useBlobStorage()) {
-    await put(storedFileName, buffer, {
-      access: "private",
-      addRandomSuffix: false,
-      contentType: contentType || "application/octet-stream"
-    });
-    return;
-  }
+  try {
+    if (useBlobStorage()) {
+      await put(storedFileName, buffer, {
+        access: "private",
+        addRandomSuffix: false,
+        contentType: contentType || "application/octet-stream"
+      });
+      return;
+    }
 
-  await fs.mkdir(uploadDir(), { recursive: true });
-  await fs.writeFile(path.join(uploadDir(), storedFileName), buffer);
+    await fs.mkdir(uploadDir(), { recursive: true });
+    await fs.writeFile(path.join(uploadDir(), storedFileName), buffer);
+  } catch (error) {
+    // Ursache sichtbar machen (z. B. fehlender Blob-Store), sonst bleibt es eine "500".
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error("Beleg-Speicher fehlgeschlagen:", error);
+    const hint = useBlobStorage()
+      ? "Vercel Blob"
+      : process.env.VERCEL ? "kein Blob-Store verbunden (BLOB_READ_WRITE_TOKEN fehlt)" : "Dateisystem";
+    throw new ReceiptFileError(`Der Beleg konnte nicht abgelegt werden (${hint}): ${reason}`.slice(0, 300), 500);
+  }
 }
 
 export async function storeUpload(file: File) {

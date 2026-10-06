@@ -2,6 +2,7 @@ import { logout, requireUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ThemeToggle } from "../theme-toggle";
 import { Navigation } from "./navigation";
+import { ResponsiveTables } from "./responsive-tables";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -27,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </form>
         </div>
       </aside>
-      <main>{children}</main>
+      <main>{children}<ResponsiveTables /></main>
     </div>
   );
 }

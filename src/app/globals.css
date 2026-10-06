@@ -429,3 +429,51 @@ button:hover, .button:hover { background: var(--brand-hover); }
   .choice-icon { font-size: 24px; margin-bottom: 6px; }
   .login { margin: 2vh auto; }
 }
+
+/* Tabellen als Karten auf dem Smartphone */
+@media (max-width: 700px) {
+  .table-scroll { overflow: visible; }
+  table.stack, .table-scroll table.stack { display: block; overflow: visible; }
+  table.stack thead { display: none; }
+  table.stack tbody { display: grid; gap: 10px; }
+  table.stack tr {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    display: grid;
+    padding: 4px 12px;
+  }
+  table.stack tbody tr:hover { background: var(--surface-2); }
+  table.stack td {
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    min-height: 40px;
+    padding: 8px 0;
+    text-align: right;
+    word-break: break-word;
+  }
+  table.stack td:last-child { border-bottom: 0; }
+  table.stack td::before {
+    color: var(--muted);
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+  table.stack td[data-label=""]::before { content: none; }
+  table.stack td[data-label=""] { justify-content: flex-start; }
+  table.stack td a, table.stack td .table-actions > a {
+    align-items: center;
+    display: inline-flex;
+    min-height: 40px;
+  }
+  table.stack .table-actions { flex-wrap: wrap; justify-content: flex-end; width: 100%; }
+}
+
+.grid > * { min-width: 0; }
