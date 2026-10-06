@@ -6,9 +6,23 @@ import {
   type PerDiemRate
 } from "./per-diem";
 
+// Standardwerte, falls die Einstellungen (noch) nicht in der Datenbank stehen,
+// z. B. in einer frischen Beta-Datenbank ohne Seed.
+const DEFAULT_NUMERIC_SETTINGS: NumericSettings = {
+  breakfastDeduction: 5.6,
+  dinnerDeduction: 11.2,
+  lunchDeduction: 11.2,
+  mealArrivalDeparture: 14,
+  mealFullDay: 28,
+  mileageRate: 0.3
+};
+
 export async function getNumericSettings() {
   const rows = await db.appSetting.findMany();
-  const values = Object.fromEntries(rows.map(row => [row.id, Number(row.value)]));
+  const values: Record<string, number> = {
+    ...DEFAULT_NUMERIC_SETTINGS,
+    ...Object.fromEntries(rows.map(row => [row.id, Number(row.value)]))
+  };
   const keys: Array<keyof NumericSettings> = [
     "breakfastDeduction",
     "dinnerDeduction",

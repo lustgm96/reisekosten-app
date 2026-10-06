@@ -30,7 +30,7 @@ export default async function Settings(){
   return <><h1>Einstellungen</h1><div className="sub">Nur die Werte, die ihr im Alltag wirklich braucht</div>
   <div className="card" style={{maxWidth:850}}><form action={save}>
     <div><label>Firmenname</label><input name="companyName" defaultValue={settings.companyName}/></div>
-    <div><label>Kilometerpauschale</label><input name="mileageRate" type="number" step=".01" defaultValue={settings.mileageRate}/></div>
+    <div><label>Kilometerpauschale</label><input name="mileageRate" type="number" step=".01" defaultValue={settings.mileageRate??"0.30"}/></div>
     <button>Speichern</button>
   </form>
   <p className="small">Verpflegungssätze werden im eigenen Bereich gepflegt.</p>
