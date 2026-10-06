@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/Reisekosten";
+const configuredBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/Reisekosten";
+const basePath = configuredBasePath === "/" ? "" : configuredBasePath;
 
 const nextConfig: NextConfig = {
   basePath,
