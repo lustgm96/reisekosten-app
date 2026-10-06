@@ -16,7 +16,7 @@ export type ReceiptSuggestion = {
 
 let workerPromise: Promise<Worker> | null = null;
 let recognitionQueue = Promise.resolve();
-const OCR_PAGE_TIMEOUT_MS = 45_000;
+const OCR_PAGE_TIMEOUT_MS = 100_000;
 const WORKER_TERMINATE_TIMEOUT_MS = 5_000;
 const workerPath = path.join(
   process.cwd(),

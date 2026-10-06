@@ -5,7 +5,7 @@ import { ReceiptFileError, validateReceiptFile } from "@/lib/storage";
 import { renderPdfForOcr } from "@/lib/pdf-rendering";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const user = await currentUser();

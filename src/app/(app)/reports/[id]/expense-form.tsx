@@ -24,7 +24,7 @@ type ExpenseFormProps = {
 };
 
 const MAX_FILES = 20;
-const REQUEST_TIMEOUT_MS = 55_000;
+const REQUEST_TIMEOUT_MS = 115_000;
 
 export function ExpenseForm({ analyzeUrl, reportId, saveUrl }: ExpenseFormProps) {
   const router = useRouter();
